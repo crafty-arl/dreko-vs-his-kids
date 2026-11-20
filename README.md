@@ -19,6 +19,8 @@ An entry for **Tiny Loop Jam 2026**. The jam window runs from Nov 20, 18:00 UTC 
 - One fixed diagonal camera that follows him.
 - One shared walk for the whole family (`src/game/walk.js`): a step bounce, a rock, a lean, a squash on landing, a slow breath when standing, and a paper-card turn. It is code only and uses the art as it is. The **Walk test** button makes every kid pace so the walk can be checked.
 - The **Map** button shows the tile map on top of the picture, for checking walls and doors.
+- The screen overlay (`src/game/Overlay.jsx`): bus clock, kids on the bus, Dreko's anxiety, a bubble over each kid and the need list on Y. A kid's bubble is a question mark until Dreko walks up to them, then it shows their need. The clock, the anxiety and the bus count do not run yet.
+- The icon set (`src/game/Icon.jsx`): ten needs and the overlay icons, as hand-inked line shapes. These are placeholders until the painted icons are made.
 
 Not in yet: drawn walking frames, the clock, the kids' needs, the bus, mom and the driver, and sound.
 
@@ -36,5 +38,6 @@ This game uses generative AI: Claude for code, and Higgsfield (Nano Banana 2) fo
 
 - **GM! 2.5D Map Engine** by Carl Lewis, made before the jam: `src/engine/gm-tiles.js` and `src/engine/gm-three.js`. The copy here has four small changes, each marked `DREKO` in the file (smooth drawing, walls of any height, cut-outs that stand upright, and a width and tip on each cut-out for the walk).
 - **three.js** (MIT licence), **React** and **Vite**.
+- **Anton** font (SIL Open Font Licence), through the `@fontsource/anton` package.
 - **Art** in `public/art/`: made with Higgsfield (Nano Banana 2) from Carl's character and world notes.
 - **Sounds and music** in `public/`: custom tracks made for this game, plus `mixkit-tick-tock-clock-timer-1045.wav` from Mixkit (check the Mixkit licence before submission).

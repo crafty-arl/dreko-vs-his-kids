@@ -28,68 +28,355 @@ body,
   touch-action: none;
 }
 
-.hud {
+/* ---------- the screen overlay ---------- */
+.overlay {
   position: fixed;
-  top: max(12px, env(safe-area-inset-top));
-  left: 12px;
-  right: 12px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  inset: 0;
   pointer-events: none;
+  --ui-bg: rgba(241, 238, 231, 0.94);
+  --need: #7a3fc4;
+  --done: #2e8b57;
+  --worry: #d9534f;
+  --wash-need: rgba(150, 110, 215, 0.38);
+  --wash-gold: rgba(189, 132, 48, 0.4);
+  --wash-red: rgba(217, 83, 79, 0.32);
+  --wash-green: rgba(46, 139, 87, 0.34);
+  --key-y: var(--gold);
 }
 
-.title,
+.overlay.ui-grey {
+  --need: var(--ink);
+  --done: var(--ink);
+  --worry: #8d8a83;
+  --wash-need: rgba(7, 7, 7, 0.13);
+  --wash-gold: rgba(7, 7, 7, 0.13);
+  --wash-red: rgba(7, 7, 7, 0.13);
+  --wash-green: rgba(7, 7, 7, 0.13);
+  --key-y: var(--ink);
+}
+
+.icon {
+  width: 26px;
+  height: 26px;
+  flex: none;
+  overflow: visible;
+}
+
+.icon .line {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.look-inked .icon .line {
+  stroke-width: 2.7;
+}
+
+.icon .wash {
+  stroke: none;
+}
+
+.wash-need { fill: var(--wash-need); }
+.wash-gold { fill: var(--wash-gold); }
+.wash-red { fill: var(--wash-red); }
+.wash-green { fill: var(--wash-green); }
+
+.hud {
+  position: absolute;
+  top: max(10px, env(safe-area-inset-top));
+  left: max(10px, env(safe-area-inset-left));
+  right: max(10px, env(safe-area-inset-right));
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.hud-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.hud-right {
+  align-items: flex-end;
+}
+
+.chip,
+.hint {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  padding: 5px 12px 5px 8px;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: var(--ui-bg);
+  color: var(--ink);
+}
+
+.look-inked .chip,
+.look-inked .hint {
+  border-radius: 22px 26px 21px 27px / 26px 21px 27px 22px;
+}
+
+.num {
+  font: 400 26px/1 Anton, Impact, 'Arial Narrow', sans-serif;
+  letter-spacing: 0.02em;
+}
+
+.bar {
+  width: 62px;
+  height: 9px;
+  border-radius: 99px;
+  background: #bdb8ad;
+  overflow: hidden;
+}
+
+.bar i {
+  display: block;
+  height: 100%;
+  border-radius: 99px;
+  background: var(--gold);
+}
+
+.ui-grey .bar i { background: var(--ink); }
+.bar-worry i { background: var(--worry); }
+
 .place {
   margin: 0;
-  padding: 6px 12px;
+  padding: 4px 10px;
   border-radius: 999px;
-  font-size: 14px;
+  background: var(--ui-bg);
+  font-size: 13px;
+  font-weight: 600;
   line-height: 1.2;
   white-space: nowrap;
 }
 
-.title {
-  background: var(--ink);
-  color: var(--paper);
-  font-weight: 700;
-  letter-spacing: 0.02em;
+.tools {
+  display: flex;
+  gap: 6px;
 }
 
-.place {
-  background: rgba(250, 248, 243, 0.92);
-  font-weight: 600;
-}
-
-.map-button {
-  margin-left: auto;
+.tool {
   pointer-events: auto;
   min-height: 44px;
-  min-width: 56px;
-  padding: 0 14px;
+  padding: 0 12px;
   border: 2px solid var(--ink);
   border-radius: 999px;
-  background: var(--paper);
+  background: var(--ui-bg);
   color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.tool[aria-pressed='true'] { background: var(--gold); }
+
+.tool:focus-visible,
+.hint-button:focus-visible,
+.close:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 2px;
+}
+
+/* a bubble over each kid; the game moves them every frame */
+.bubbles {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.bubble {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 40px;
+  height: 40px;
+  margin-top: -9px;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  background: var(--ui-bg);
+  color: var(--ink);
+  visibility: hidden;
+  will-change: transform;
+}
+
+.look-inked .bubble { border-radius: 52% 48% 50% 50% / 48% 52% 48% 52%; }
+
+.bubble::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -7px;
+  width: 9px;
+  height: 9px;
+  background: var(--ui-bg);
+  border-right: 2px solid var(--ink);
+  border-bottom: 2px solid var(--ink);
+  transform: translateX(-50%) rotate(45deg);
+}
+
+.bubble .icon { position: relative; z-index: 1; }
+.look-plain .bubble-known { color: var(--need); }
+.bubble-ready { color: var(--done); }
+
+.hints {
+  position: absolute;
+  left: max(10px, env(safe-area-inset-left));
+  right: max(10px, env(safe-area-inset-right));
+  bottom: max(10px, env(safe-area-inset-bottom));
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.hint {
+  min-height: 44px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.hint-button {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.key {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font: 400 17px/1 Anton, Impact, 'Arial Narrow', sans-serif;
+}
+
+.key-y { background: var(--key-y); }
+.key-stick { color: var(--ink); }
+.key-stick .icon { width: 28px; height: 28px; }
+
+/* the need list, on Y */
+.list {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px;
+  background: rgba(7, 7, 7, 0.55);
+  pointer-events: auto;
+}
+
+.panel {
+  width: min(100%, 420px);
+  max-height: 100%;
+  overflow-y: auto;
+  box-sizing: border-box;
+  padding: 14px;
+  border: 2px solid var(--ink);
+  border-radius: 18px;
+  background: var(--paper);
+}
+
+.panel h2 {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin: 0 0 10px;
+  font: 400 24px/1 Anton, Impact, 'Arial Narrow', sans-serif;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.panel h2 small {
+  font: 700 12px/1 system-ui, sans-serif;
+  letter-spacing: 0.04em;
+}
+
+.rows {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.row em {
+  display: block;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 400;
+  color: #5d5a54;
+}
+
+.face,
+.slot {
+  width: 36px;
+  height: 36px;
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  background-color: #fff;
+}
+
+.face {
+  background-repeat: no-repeat;
+  background-size: 135% auto;
+  background-position: 50% 3%;
+}
+
+.slot {
+  display: grid;
+  place-items: center;
+  color: var(--ink);
+}
+
+.slot-ask { border-style: dashed; }
+.look-plain .slot-known { color: var(--need); }
+.slot-ready { color: #fff; background: var(--done); border-color: var(--done); }
+
+.close {
+  display: block;
+  min-height: 44px;
+  margin: 12px 0 0 auto;
+  padding: 0 18px;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--paper);
   font: inherit;
   font-size: 14px;
   font-weight: 700;
   cursor: pointer;
 }
 
-.map-button[aria-pressed='true'] {
-  background: var(--gold);
-}
-
-.map-button:focus-visible {
-  outline: 3px solid var(--gold);
-  outline-offset: 2px;
+@media (min-width: 720px) {
+  .panel { width: min(100%, 640px); }
+  .rows { grid-template-columns: 1fr 1fr; gap: 8px 22px; }
 }
 
 .minimap {
   position: fixed;
-  top: calc(max(12px, env(safe-area-inset-top)) + 56px);
-  right: 12px;
+  top: calc(max(10px, env(safe-area-inset-top)) + 132px);
+  right: max(10px, env(safe-area-inset-right));
   width: min(40vw, 180px);
   border: 2px solid var(--ink);
   border-radius: 6px;
@@ -100,7 +387,7 @@ body,
 .note {
   position: fixed;
   left: 50%;
-  bottom: max(16px, env(safe-area-inset-bottom));
+  bottom: calc(max(10px, env(safe-area-inset-bottom)) + 58px);
   transform: translateX(-50%);
   margin: 0;
   padding: 8px 14px;
@@ -113,10 +400,3 @@ body,
   pointer-events: none;
 }
 
-/* The walk test switch sits under the title, out of the way of the Map. */
-.test-button {
-  position: fixed;
-  top: calc(max(12px, env(safe-area-inset-top)) + 56px);
-  left: 12px;
-  margin-left: 0;
-}

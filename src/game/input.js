@@ -36,11 +36,30 @@ export function createInput(target = window) {
     return len > 1 ? [x / len, y / len] : [x, y]
   }
 
+  // Controller buttons that were pressed since the last call: 'a', 'b', 'y' or 'start' (standard layout).
+  const BUTTONS = { 0: 'a', 1: 'b', 3: 'y', 9: 'start' }
+  const held = new Set()
+  function taps() {
+    const out = []
+    const pads = navigator.getGamepads ? navigator.getGamepads() : []
+    for (const pad of pads) {
+      if (!pad) continue
+      for (const i in BUTTONS) {
+        const id = pad.index + ':' + i
+        const on = !!pad.buttons[i]?.pressed
+        if (on && !held.has(id)) out.push(BUTTONS[i])
+        if (on) held.add(id)
+        else held.delete(id)
+      }
+    }
+    return out
+  }
+
   function stop() {
     target.removeEventListener('keydown', down)
     target.removeEventListener('keyup', up)
     target.removeEventListener('blur', clear)
   }
 
-  return { read, stop }
+  return { read, taps, stop }
 }

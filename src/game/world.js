@@ -6,6 +6,7 @@ import { CAMERA, DREKO, GOLD, INK, PAPER, TILE, WALK } from './config.js'
 import { KIDS, kidArt } from './family.js'
 import { H, PROPS, ROWS, SMALL, W, placeName } from './house.js'
 import { createInput } from './input.js'
+import { ASK_DISTANCE } from './needs.js'
 import { createWalker, poseOf, stepWalker } from './walk.js'
 
 // The walk grid: walls, furniture and waiting kids are solid.
@@ -50,6 +51,11 @@ export async function startGame(canvas, hooks = {}) {
   const dreko = { at: DREKO.start.slice(), path: null, len: 0, gone: 0, go: 0, face: 'front', flip: false, moving: false }
   const drekoWalk = createWalker({ height: DREKO.height })
   let walkTest = false
+  // what Dreko has learned: a kid tells him their need the first time he walks up to them
+  const known = {}
+  const head = new THREE.Vector3()
+  const lift = 1 / Math.cos((CAMERA.tilt * Math.PI) / 180) // the cut-outs are stretched by this to stand upright
+  const points = kids.map(() => [0, 0, false])
   const cam = { at: dreko.at.slice() }
   let size = { w: 1, h: 1 }
   let place = ''
@@ -114,6 +120,16 @@ export async function startGame(canvas, hooks = {}) {
       look: dreko.face + (dreko.flip ? '-flip' : ''),
     })
     for (const k of kids) stepKid(k, dt)
+    for (const tap of input.taps()) hooks.onButton?.(tap)
+
+    let learned = false
+    for (const k of kids) {
+      if (!known[k.kid.name] && Math.hypot(k.at[0] - dreko.at[0], k.at[1] - dreko.at[1]) < ASK_DISTANCE) {
+        known[k.kid.name] = true
+        learned = true
+      }
+    }
+    if (learned) hooks.onKnown?.({ ...known })
 
     // the camera slides after him and never leaves the map
     const ease = 1 - Math.exp(-dt / 220)
@@ -192,6 +208,19 @@ export async function startGame(canvas, hooks = {}) {
     const tall = size.h > size.w
     view.render({ mode: 'orbit', angle: CAMERA.angle, tilt: CAMERA.tilt, upTo: 1, at: [cam.at[0], cam.at[1], 0], dist: tall ? CAMERA.distTall : CAMERA.distWide })
     if (mapCanvas) drawMap()
+
+    // where the top of each kid's head is on screen, for the bubbles
+    if (hooks.onBubbles) {
+      kids.forEach((k, i) => {
+        const pose = poseOf(k.walker)
+        const floatAt = k.kid.floats ? 0.3 + 0.05 * Math.sin(now / 500) : 0
+        head.set(k.at[0], pose.up + floatAt + k.size * pose.tall * lift, k.at[1]).project(view.camera)
+        points[i][0] = (head.x * 0.5 + 0.5) * size.w
+        points[i][1] = (-head.y * 0.5 + 0.5) * size.h
+        points[i][2] = head.z < 1 && Math.abs(head.x) < 1.1 && Math.abs(head.y) < 1.1
+      })
+      hooks.onBubbles(points)
+    }
   }
 
   // The data under the art: walls dark, doors gold, kids purple, Dreko gold with a ring.
@@ -257,6 +286,8 @@ export async function startGame(canvas, hooks = {}) {
     const hit = view.pick(e.clientX - r.left, e.clientY - r.top)
     if (!hit) return
     const path = GMTiles.findPath(walk, [dreko.at[0] * TILE, dreko.at[1] * TILE], [hit.x * TILE, hit.y * TILE])
+    // a tap on a wall, a table or a kid: stop on the nearest floor tile instead of walking into it
+    if (path && !GMTiles.walkable(walk, Math.floor(hit.x), Math.floor(hit.y))) path.pop()
     if (path && path.length > 1) {
       dreko.path = path
       dreko.len = GMTiles.pathLength(path)
@@ -279,7 +310,7 @@ export async function startGame(canvas, hooks = {}) {
     setMapCanvas(c) { mapCanvas = c },
     setWalkTest(on) { walkTest = !!on },
     // for tests and for the next systems (needs, clock): where things are right now
-    state: () => ({ dreko: dreko.at.slice(), place, moving: dreko.moving }),
+    state: () => ({ dreko: dreko.at.slice(), place, moving: dreko.moving, known: Object.keys(known) }),
     stop() {
       stopped = true
       input.stop()

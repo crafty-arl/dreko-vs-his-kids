@@ -1,12 +1,17 @@
 import { useEffect, useRef, useState } from 'react'
+import { CLOCK } from './config.js'
+import Overlay from './Overlay.jsx'
 import { startGame } from './world.js'
 
-// The game screen: one canvas for the house, and a thin layer of signs on top.
+// The game screen: one canvas for the house, and the overlay on top.
 export default function Game() {
   const stageRef = useRef(null)
   const canvasRef = useRef(null)
   const mapRef = useRef(null)
   const gameRef = useRef(null)
+  const bubbleRefs = useRef([])
+  const [known, setKnown] = useState({})
+  const [listOpen, setListOpen] = useState(false)
   const [place, setPlace] = useState('')
   const [status, setStatus] = useState('loading')
   const [showMap, setShowMap] = useState(false)
@@ -21,7 +26,21 @@ export default function Game() {
     const fit = () => game && game.resize(stage.clientWidth, stage.clientHeight)
     const watch = new ResizeObserver(fit)
 
-    startGame(canvasRef.current, { onPlace: setPlace, onWalk: () => setWalked(true) })
+    // the game moves the bubbles itself, every frame, without asking React to draw again
+    const onBubbles = (points) => {
+      points.forEach(([x, y, show], i) => {
+        const el = bubbleRefs.current[i]
+        if (!el) return
+        el.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) translate(-50%, -100%)`
+        el.style.visibility = show ? 'visible' : 'hidden'
+      })
+    }
+    const onButton = (button) => {
+      if (button === 'y') setListOpen((v) => !v)
+      if (button === 'b') setListOpen(false)
+    }
+
+    startGame(canvasRef.current, { onPlace: setPlace, onWalk: () => setWalked(true), onKnown: setKnown, onBubbles, onButton })
       .then((g) => {
         if (cancelled) return g.stop()
         game = g
@@ -55,6 +74,8 @@ export default function Game() {
   useEffect(() => {
     const anyKey = (e) => {
       if (/^(arrow|[wasd]$)/i.test(e.key)) setWalked(true)
+      if (e.key.toLowerCase() === 'y') setListOpen((v) => !v)
+      if (e.key === 'Escape' || e.key.toLowerCase() === 'b') setListOpen(false)
     }
     window.addEventListener('keydown', anyKey)
     return () => window.removeEventListener('keydown', anyKey)
@@ -63,16 +84,26 @@ export default function Game() {
   return (
     <div ref={stageRef} className="stage">
       <canvas ref={canvasRef} className="world" />
-      <header className="hud">
-        <h1 className="title">Dreko vs His Kids</h1>
-        {place && <p className="place">{place}</p>}
-        <button type="button" className="map-button" aria-pressed={showMap} onClick={() => setShowMap((v) => !v)}>
-          Map
-        </button>
-        <button type="button" className="map-button test-button" aria-pressed={walkTest} onClick={() => setWalkTest((v) => !v)}>
-          Walk test
-        </button>
-      </header>
+      {/* The clock, the anxiety and the bus count are not running yet: they show the start of loop 1. */}
+      <Overlay
+        place={place}
+        known={known}
+        ready={{}}
+        timeLeft={CLOCK.firstLoop}
+        worry={0.15}
+        listOpen={listOpen}
+        onToggleList={() => setListOpen((v) => !v)}
+        bubbleRefs={bubbleRefs}
+      >
+        <div className="tools">
+          <button type="button" className="tool" aria-pressed={showMap} onClick={() => setShowMap((v) => !v)}>
+            Map
+          </button>
+          <button type="button" className="tool" aria-pressed={walkTest} onClick={() => setWalkTest((v) => !v)}>
+            Walk test
+          </button>
+        </div>
+      </Overlay>
       <canvas ref={mapRef} className="minimap" hidden={!showMap} aria-label="Tile map of the house" />
       {status === 'loading' && <p className="note">Waking the house up</p>}
       {status === 'error' && <p className="note">The house did not load. Reload the page to try again.</p>}
