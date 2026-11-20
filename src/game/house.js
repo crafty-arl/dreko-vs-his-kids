@@ -1,0 +1,70 @@
+// The house as data. The tile map is the truth; the art is only its skin.
+// One letter per tile: '#' wall (solid), '.' floor, 'D' doorway (you can walk through it).
+// x runs left to right along a row, y runs down the rows. North is the top row.
+
+export const ROWS = [
+  '###############',
+  '#......#......#',
+  '#......#......#',
+  '#......D......#',
+  '#......#......#',
+  '#......#......#',
+  '###D######DD###',
+  '#......#......#',
+  '#......#......#',
+  '#......D......#',
+  '#......#......#',
+  '#......#......#',
+  '##########DD###',
+  '...............',
+  '...............',
+  '...............',
+  '...............',
+]
+
+export const W = ROWS[0].length
+export const H = ROWS.length
+
+// The five places from the game map. `box` is [x0, y0, x1, y1] in tiles, both ends included.
+export const PLACES = {
+  kitchen: { name: 'Kitchen', box: [1, 1, 6, 5], floor: 'f-kitchen', wall: 'w-kitchen' },
+  bath: { name: 'Bathroom', box: [8, 1, 13, 5], floor: 'f-bath', wall: 'w-bath' },
+  cubby: { name: 'Cubby room', box: [1, 7, 6, 11], floor: 'f-cubby', wall: 'w-cubby' },
+  hall: { name: 'Front hall', box: [8, 7, 13, 11], floor: 'f-hall', wall: 'w-hall' },
+  stop: { name: 'Bus stop', box: [0, 13, 14, 16], floor: 'f-walk', wall: 'w-out' },
+}
+
+// Which kind of ground a tile is: a place key, 'runner' (the hall rug), 'road', or null for a wall.
+export function zone(x, y) {
+  if (y >= 15) return 'road'
+  if (y >= 13) return 'stop'
+  if ((x === 10 || x === 11) && y >= 6 && y <= 12) return 'runner'
+  if (x === 7 && y === 3) return 'kitchen' // doorway floors take the floor of the room on their west or north
+  if (x === 3 && y === 6) return 'cubby'
+  if (x === 7 && y === 9) return 'hall'
+  for (const key of ['kitchen', 'bath', 'cubby', 'hall']) {
+    const [x0, y0, x1, y1] = PLACES[key].box
+    if (x >= x0 && x <= x1 && y >= y0 && y <= y1) return key
+  }
+  return null
+}
+
+// The name of the place a tile belongs to (for the sign on screen).
+export function placeName(x, y) {
+  const z = zone(Math.floor(x), Math.floor(y))
+  if (z === 'runner') return y < 6.5 ? PLACES.bath.name : PLACES.hall.name
+  if (z === 'road') return PLACES.stop.name
+  return z ? PLACES[z].name : ''
+}
+
+// Solid furniture. `at` is its tile, `size` its drawn height in tiles, `front` how far its picture stands toward
+// the camera from the tile's middle (the pictures are drawn from their front corner).
+export const PROPS = [
+  { id: 'fridge', at: [1, 1], img: 'fridge', size: 2.3, front: 0.3 },
+  { id: 'stove', at: [2, 1], img: 'stove', size: 1.45, front: 0.3 },
+  { id: 'counter', at: [3, 1], img: 'counter', size: 1.5, front: 0.3 },
+  { id: 'table', at: [3, 3], img: 'table', size: 1.6, front: 0.33 },
+]
+
+// Small things that sit on furniture: `up` is how high off the floor, in floors. They stand just in front of the furniture's card.
+export const SMALL = [{ id: 'bowl', at: [3.9, 3.9], img: 'cereal-bowl', size: 0.5, up: 1.45 }]
