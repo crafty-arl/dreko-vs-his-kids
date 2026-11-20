@@ -13,7 +13,7 @@ export default function Overlay({ place, known, ready, timeLeft, worry, listOpen
   const onBus = Object.keys(ready).length
   const art = import.meta.env.BASE_URL + 'art/'
   return (
-    <div className={`overlay look-${UI.icons} ui-${UI.overlay}`}>
+    <div className={`overlay look-${UI.icons === 'plain' ? 'plain' : 'inked'} ui-${UI.overlay}`}>
       <InkFilter />
 
       {/* a bubble over each kid: a question mark until Dreko walks up, then the need, then a tick */}

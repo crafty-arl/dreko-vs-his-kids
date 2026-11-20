@@ -400,3 +400,32 @@ body,
   pointer-events: none;
 }
 
+
+/* painted icons are pictures: a little bigger than the line shapes so they read */
+.icon-painted {
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
+}
+
+.bubble .icon-painted,
+.slot .icon-painted {
+  width: 32px;
+  height: 32px;
+}
+
+.bubble:has(.icon-painted) {
+  width: 44px;
+  height: 44px;
+}
+
+.slot:has(.icon-painted) {
+  width: 42px;
+  height: 42px;
+  background: #fff;
+}
+
+.key-stick .icon-painted {
+  width: 30px;
+  height: 30px;
+}

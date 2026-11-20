@@ -20,9 +20,11 @@ export const WALK = { stride: 0.4, bounce: 0.05, rock: 0.07, lean: 0.1, squash: 
 // Each kid who makes the bus moves the next alarm earlier by `perKid` seconds (draft number).
 export const CLOCK = { firstLoop: 30, perKid: 10 }
 
-// The look of the screen overlay, as Carl picked on Nov 20: colour, with the icons hand-inked like the art.
-// icons: 'inked' (wobbly pen line over a wash of colour) or 'plain' (clean line).
-export const UI = { icons: 'inked', overlay: 'colour' }
+// The look of the screen overlay, as Carl picked on Nov 20: colour, with painted icons in the game's pen and
+// watercolour look.
+// icons: 'painted' (pictures from public/art/icons/, inked where one is missing), 'inked' (wobbly pen line
+// over a wash of colour) or 'plain' (clean line).
+export const UI = { icons: 'painted', overlay: 'colour' }
 
 export const INK = '#070707'
 export const PAPER = '#F1EEE7'

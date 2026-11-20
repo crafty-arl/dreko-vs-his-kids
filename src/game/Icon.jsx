@@ -25,9 +25,16 @@ const SHAPES = {
   stick: (<><circle cx="16" cy="16" r="12" /><circle cx="16" cy="16" r="5" fill="currentColor" /></>),
 }
 
+// Painted icons (pen and watercolour pictures in public/art/icons/). List a name here once its picture is in;
+// anything not listed falls back to the line shape above.
+const PAINTED = ['lunch', 'slip', 'braids', 'homework', 'socks', 'teeth', 'jacket', 'show', 'breakfast', 'backpack', 'ask', 'clock', 'bus', 'sweat', 'tick', 'stick']
+
 // wash: which colour sits behind an inked icon ('need', 'gold', 'red', 'green'), or nothing
 export function Icon({ name, wash, className = '' }) {
-  const inked = UI.icons === 'inked'
+  if (UI.icons === 'painted' && PAINTED.includes(name)) {
+    return <img className={`icon icon-painted ${className}`} src={`${import.meta.env.BASE_URL}art/icons/${name}.webp`} alt="" />
+  }
+  const inked = UI.icons !== 'plain'
   return (
     <svg className={`icon ${className}`} viewBox="0 0 32 32" aria-hidden="true">
       {inked && wash && (
