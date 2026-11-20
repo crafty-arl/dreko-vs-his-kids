@@ -1,0 +1,24 @@
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+  background: #f1eee7;
+  color: #070707;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+.stage {
+  position: fixed;
+  inset: 0;
+}
+
+.title {
+  position: fixed;
+  top: 16px;
+  left: 16px;
+  margin: 0;
+  font-size: 20px;
+  letter-spacing: 0.02em;
+  pointer-events: none;
+}
