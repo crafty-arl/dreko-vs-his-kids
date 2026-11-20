@@ -1,5 +1,5 @@
 // Copied from Carl's GM! 2.5D Map Engine (gmcarl repo, tools/gm-tiles/gm-three.js). Changes made for this game are
-// marked DREKO: an opts.smooth switch on create(), walls of any height up to one floor, and opts.upright cut-outs.
+// marked DREKO: an opts.smooth switch on create(), walls of any height up to one floor, opts.upright cut-outs, and wide + roll on a thing (for the shared walk).
 //
 // gm-three: builds a real 3D scene (three.js) from a gm-tiles map with floors. The data map stays the truth; this
 // only draws it. Pass in THREE (any recent version, r150+); works as a <script> global (window.GMThree) or in Node.
@@ -189,11 +189,11 @@
       things.children.slice().forEach(o => things.remove(o));
       for (const t of list) {
         let mat = thingMats.get(t.img); if (!mat) thingMats.set(t.img, mat = new CutMat({ map: tex(t.img), alphaTest: .5, ...cutExtra }));
-        const s = cutOut(mat), k = t.size || .9; s.scale.set(k, k * (t.h ?? 1), 1); s.userData.tall = s.scale.y;
+        const s = cutOut(mat), k = t.size || .9; s.scale.set(k * (t.wide ?? 1), k * (t.h ?? 1), 1); s.userData.tall = s.scale.y; if (upright) s.rotation.z = t.roll || 0;   /* DREKO: wide (squash, card turn) and roll (rock, lean) */
         s.position.set(t.at[0], t.level * 1, t.at[1]); s.userData.id = t.id; s.userData.level = t.level; things.add(s);
         if (t.ghost) {   // shows only where something hides it: the same shape in one colour, drawn where it is behind
           let gm = ghostMats.get(t.img); if (!gm) ghostMats.set(t.img, gm = new CutMat({ map: tex(t.img), alphaTest: .5, color: new THREE.Color(t.ghost), depthFunc: THREE.GreaterDepth, depthWrite: false, opacity: .6, transparent: true, ...(upright ? { side: THREE.DoubleSide } : {}) }));
-          const s2 = cutOut(gm); s2.scale.copy(s.scale); s2.userData.tall = s.scale.y; s2.position.copy(s.position); s2.userData.level = t.level; s2.userData.ghost = true; s2.raycast = () => {}; things.add(s2);
+          const s2 = cutOut(gm); s2.scale.copy(s.scale); s2.rotation.z = s.rotation.z; s2.userData.tall = s.scale.y; s2.position.copy(s.position); s2.userData.level = t.level; s2.userData.ghost = true; s2.raycast = () => {}; things.add(s2);
         }
       }
     }

@@ -17,9 +17,10 @@ An entry for **Tiny Loop Jam 2026**. The jam window runs from Nov 20, 18:00 UTC 
 - The ten kids standing in their rooms (`src/game/family.js`).
 - Dreko walks. Tap the floor, use the arrow keys or WASD, or use a controller stick or D-pad.
 - One fixed diagonal camera that follows him.
+- One shared walk for the whole family (`src/game/walk.js`): a step bounce, a rock, a lean, a squash on landing, a slow breath when standing, and a paper-card turn. It is code only and uses the art as it is. The **Walk test** button makes every kid pace so the walk can be checked.
 - The **Map** button shows the tile map on top of the picture, for checking walls and doors.
 
-Not in yet: walking frames, the clock, the kids' needs, the bus, mom and the driver, and sound.
+Not in yet: drawn walking frames, the clock, the kids' needs, the bus, mom and the driver, and sound.
 
 ## Run it
 
@@ -33,7 +34,7 @@ npm run build
 
 This game uses generative AI: Claude for code, and Higgsfield (Nano Banana 2) for art. The full list of what AI made will be in the credits and in the itch.io AI disclosure at submission.
 
-- **GM! 2.5D Map Engine** by Carl Lewis, made before the jam: `src/engine/gm-tiles.js` and `src/engine/gm-three.js`. The copy here has three small changes, each marked `DREKO` in the file (smooth drawing, walls of any height, cut-outs that stand upright).
+- **GM! 2.5D Map Engine** by Carl Lewis, made before the jam: `src/engine/gm-tiles.js` and `src/engine/gm-three.js`. The copy here has four small changes, each marked `DREKO` in the file (smooth drawing, walls of any height, cut-outs that stand upright, and a width and tip on each cut-out for the walk).
 - **three.js** (MIT licence), **React** and **Vite**.
 - **Art** in `public/art/`: made with Higgsfield (Nano Banana 2) from Carl's character and world notes.
 - **Sounds and music** in `public/`: custom tracks made for this game, plus `mixkit-tick-tock-clock-timer-1045.wav` from Mixkit (check the Mixkit licence before submission).

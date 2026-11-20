@@ -2,10 +2,11 @@
 import * as THREE from 'three'
 import { GMThree, GMTiles } from '../engine/index.js'
 import { buildHouse, cutout, loadArt } from './art.js'
-import { CAMERA, DREKO, GOLD, INK, PAPER, TILE } from './config.js'
+import { CAMERA, DREKO, GOLD, INK, PAPER, TILE, WALK } from './config.js'
 import { KIDS, kidArt } from './family.js'
 import { H, PROPS, ROWS, SMALL, W, placeName } from './house.js'
 import { createInput } from './input.js'
+import { createWalker, poseOf, stepWalker } from './walk.js'
 
 // The walk grid: walls, furniture and waiting kids are solid.
 function walkGrid() {
@@ -34,9 +35,21 @@ export async function startGame(canvas, hooks = {}) {
     ...PROPS.map((p) => ({ id: p.id, at: [p.at[0] + 0.5 + p.front, p.at[1] + 0.5 + p.front], level: 0, img: cutout(img[p.img]), size: p.size })),
     ...SMALL.map((s) => ({ id: s.id, at: s.at, level: s.up, img: cutout(img[s.img]), size: s.size })),
   ]
-  const kids = KIDS.map((k) => ({ kid: k, img: cutout(img[kidArt(k)], k.flip), size: DREKO.height * k.tall }))
+  // every kid gets the same walker as Dreko, only sized to their height and a touch quicker
+  const kids = KIDS.map((k, i) => {
+    const size = DREKO.height * k.tall
+    const look = k.flip ? 'front-flip' : 'front'
+    return {
+      kid: k, size, at: k.spot.slice(), look,
+      art: { front: cutout(img[kidArt(k)]), 'front-flip': cutout(img[kidArt(k)], true) },
+      walker: createWalker({ height: size, quick: WALK.kidsQuick, floats: !!k.floats, look, offset: i * 370 }),
+      pace: null,
+    }
+  })
 
-  const dreko = { at: DREKO.start.slice(), path: null, len: 0, t: 0, face: 'front', flip: false, moving: false }
+  const dreko = { at: DREKO.start.slice(), path: null, len: 0, gone: 0, go: 0, face: 'front', flip: false, moving: false }
+  const drekoWalk = createWalker({ height: DREKO.height })
+  let walkTest = false
   const cam = { at: dreko.at.slice() }
   let size = { w: 1, h: 1 }
   let place = ''
@@ -61,11 +74,16 @@ export async function startGame(canvas, hooks = {}) {
 
   function step(dt) {
     const [ix, iy] = input.read()
+    const from = dreko.at
+    let side = 0
     dreko.moving = false
+    // he eases up to speed instead of snapping to it
+    dreko.go = ix || iy || dreko.path ? Math.min(1, dreko.go + dt / WALK.easeMs) : 0
     if (ix || iy) {
       // the stick is read against the screen, then turned into tiles
       dreko.path = null
-      const k = (DREKO.speed * dt) / 1000 / Math.SQRT2
+      side = ix / Math.hypot(ix, iy)
+      const k = (DREKO.speed * dreko.go * dt) / 1000 / Math.SQRT2
       const dx = (ix - iy) * k
       const dy = (-ix - iy) * k
       let [x, y] = dreko.at
@@ -75,15 +93,28 @@ export async function startGame(canvas, hooks = {}) {
       faceAlong(dx, dy)
       dreko.at = [x, y]
     } else if (dreko.path) {
-      dreko.t += dt
-      const f = Math.min(1, ((dreko.t / 1000) * DREKO.speed * TILE) / dreko.len)
+      // and he slows into the last third of a tile instead of stopping dead
+      const left = (dreko.len - dreko.gone) / TILE
+      const pace = dreko.go * Math.max(0.3, Math.min(1, left / 0.35))
+      dreko.gone += (DREKO.speed * pace * dt * TILE) / 1000
+      const f = Math.min(1, dreko.gone / dreko.len)
       const p = GMTiles.along(dreko.path, f)
       const next = [p[0] / TILE, p[1] / TILE]
-      faceAlong(next[0] - dreko.at[0], next[1] - dreko.at[1])
+      const dx = next[0] - dreko.at[0]
+      const dy = next[1] - dreko.at[1]
+      if (Math.hypot(dx, dy) > 1e-6) side = (dx - dy) / Math.SQRT2 / Math.hypot(dx, dy)
+      faceAlong(dx, dy)
       dreko.at = next
       dreko.moving = true
       if (f >= 1) dreko.path = null
     }
+    stepWalker(drekoWalk, dt, {
+      moved: Math.hypot(dreko.at[0] - from[0], dreko.at[1] - from[1]),
+      side,
+      look: dreko.face + (dreko.flip ? '-flip' : ''),
+    })
+    for (const k of kids) stepKid(k, dt)
+
     // the camera slides after him and never leaves the map
     const ease = 1 - Math.exp(-dt / 220)
     const tx = Math.max(2.5, Math.min(W - 2.5, dreko.at[0]))
@@ -97,19 +128,65 @@ export async function startGame(canvas, hooks = {}) {
     }
   }
 
+  // Walk test: every kid paces left and right across the screen from their spot, so the shared walk can be seen
+  // on all of them. It is a test, not the game: kids do not walk on their own yet.
+  function paceFor(k) {
+    const u = [Math.SQRT1_2, -Math.SQRT1_2] // screen right, in tiles
+    const [hx, hy] = k.kid.spot
+    const open = (x, y) => (Math.floor(x) === Math.floor(hx) && Math.floor(y) === Math.floor(hy)) || GMTiles.walkable(walk, Math.floor(x), Math.floor(y))
+    const reach = (sign) => {
+      let d = 0
+      while (d < 1.2 && open(hx + u[0] * sign * (d + 0.35), hy + u[1] * sign * (d + 0.35))) d += 0.1
+      return d
+    }
+    return { u, lo: -reach(-1), hi: reach(1), d: 0, dir: 1, wait: 300 + Math.random() * 500, go: 0 }
+  }
+  function stepKid(k, dt) {
+    let moved = 0
+    let side = 0
+    if (walkTest) {
+      const p = k.pace || (k.pace = paceFor(k))
+      if (p.wait > 0) {
+        p.wait -= dt
+        p.go = 0
+      } else if (p.hi - p.lo > 0.3) {
+        p.go = Math.min(1, p.go + dt / WALK.easeMs)
+        const end = p.dir > 0 ? p.hi : p.lo
+        const left = Math.abs(end - p.d)
+        const stepBy = Math.min(left, (WALK.kidSpeed * p.go * Math.max(0.3, Math.min(1, left / 0.3)) * dt) / 1000)
+        p.d += stepBy * p.dir
+        moved = stepBy
+        side = p.dir
+        k.look = p.dir > 0 ? 'front' : 'front-flip'
+        if (left - stepBy < 0.01) {
+          p.dir = -p.dir
+          p.wait = 700
+        }
+      }
+      k.at = [k.kid.spot[0] + p.u[0] * p.d, k.kid.spot[1] + p.u[1] * p.d]
+    } else if (k.pace) {
+      k.pace = null
+      k.at = k.kid.spot.slice()
+      k.look = k.kid.flip ? 'front-flip' : 'front'
+    }
+    stepWalker(k.walker, dt, { moved, side, look: k.look })
+  }
+
+  // one character on screen: the shared walk's pose laid over their picture
+  const posed = (id, at, art, size, walker, floatAt, extra) => {
+    const pose = poseOf(walker)
+    return { id, at, img: art[pose.look], size, level: pose.up + floatAt, wide: pose.wide, h: pose.tall, roll: pose.roll, ...extra }
+  }
+
   function draw(now) {
-    const hop = dreko.moving ? 0.05 * Math.abs(Math.sin(now / 90)) : 0
     const things = [
       ...still,
-      ...kids.map(({ kid, img: art, size: s }) => ({
-        id: kid.name, at: kid.spot, img: art, size: s,
-        level: kid.floats ? 0.3 + 0.05 * Math.sin(now / 500) : 0,
-      })),
-      { id: 'dreko', at: dreko.at, level: hop, img: drekoArt[dreko.face + (dreko.flip ? '-flip' : '')], size: DREKO.height, ghost: GOLD },
+      ...kids.map((k) => posed(k.kid.name, k.at, k.art, k.size, k.walker, k.kid.floats ? 0.3 + 0.05 * Math.sin(now / 500) : 0)),
+      posed('dreko', dreko.at, drekoArt, DREKO.height, drekoWalk, 0, { ghost: GOLD }),
     ]
     view.setThings(things)
     view.setMarks([
-      ...kids.map(({ kid, size: s }) => ({ at: kid.spot, h: 0, r: s * 0.16, color: INK, opacity: 0.16 })),
+      ...kids.map(({ at, size: s }) => ({ at, h: 0, r: s * 0.16, color: INK, opacity: 0.16 })),
       { at: dreko.at, h: 0, r: 0.3, color: INK, opacity: 0.2 },
     ])
     const tall = size.h > size.w
@@ -183,7 +260,7 @@ export async function startGame(canvas, hooks = {}) {
     if (path && path.length > 1) {
       dreko.path = path
       dreko.len = GMTiles.pathLength(path)
-      dreko.t = 0
+      dreko.gone = 0
       hooks.onWalk?.()
     }
   }
@@ -200,6 +277,7 @@ export async function startGame(canvas, hooks = {}) {
   return {
     resize,
     setMapCanvas(c) { mapCanvas = c },
+    setWalkTest(on) { walkTest = !!on },
     // for tests and for the next systems (needs, clock): where things are right now
     state: () => ({ dreko: dreko.at.slice(), place, moving: dreko.moving }),
     stop() {

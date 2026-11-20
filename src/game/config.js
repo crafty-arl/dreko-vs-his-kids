@@ -11,6 +11,11 @@ export const WALL = { tall: 2, half: 0.85, cut: 0.3 }
 
 export const DREKO = { height: 1.85, speed: 3.1, radius: 0.24, start: [5.5, 2.6] }
 
+// The one walk everyone shares (src/game/walk.js). Feel: "busy dad in a hurry", quick and bouncy.
+// stride: tiles per step for each tile of height. bounce: lift per tile of height. rock and lean: radians.
+// squash: how much shorter on landing. breath: how much taller on a breath in. kidsQuick: kids step a touch faster.
+export const WALK = { stride: 0.4, bounce: 0.05, rock: 0.07, lean: 0.1, squash: 0.09, easeMs: 110, turnMs: 170, breath: 0.012, breathMs: 2800, kidsQuick: 1.12, kidSpeed: 2.4 }
+
 // The clock, as Carl set it on Nov 20: 30 seconds to start, tune by playtesting.
 // Each kid who makes the bus moves the next alarm earlier by `perKid` seconds (draft number).
 export const CLOCK = { firstLoop: 30, perKid: 10 }

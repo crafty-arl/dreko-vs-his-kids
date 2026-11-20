@@ -11,6 +11,8 @@ export default function Game() {
   const [status, setStatus] = useState('loading')
   const [showMap, setShowMap] = useState(false)
   const [walked, setWalked] = useState(false)
+  // Walk test: every kid paces on the spot so the shared walk can be checked. Open the page with ?walktest to start in it.
+  const [walkTest, setWalkTest] = useState(() => new URLSearchParams(window.location.search).has('walktest'))
 
   useEffect(() => {
     let cancelled = false
@@ -47,6 +49,10 @@ export default function Game() {
   }, [showMap, status])
 
   useEffect(() => {
+    gameRef.current?.setWalkTest(walkTest)
+  }, [walkTest, status])
+
+  useEffect(() => {
     const anyKey = (e) => {
       if (/^(arrow|[wasd]$)/i.test(e.key)) setWalked(true)
     }
@@ -62,6 +68,9 @@ export default function Game() {
         {place && <p className="place">{place}</p>}
         <button type="button" className="map-button" aria-pressed={showMap} onClick={() => setShowMap((v) => !v)}>
           Map
+        </button>
+        <button type="button" className="map-button test-button" aria-pressed={walkTest} onClick={() => setWalkTest((v) => !v)}>
+          Walk test
         </button>
       </header>
       <canvas ref={mapRef} className="minimap" hidden={!showMap} aria-label="Tile map of the house" />

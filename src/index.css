@@ -112,3 +112,11 @@ body,
   text-align: center;
   pointer-events: none;
 }
+
+/* The walk test switch sits under the title, out of the way of the Map. */
+.test-button {
+  position: fixed;
+  top: calc(max(12px, env(safe-area-inset-top)) + 56px);
+  left: 12px;
+  margin-left: 0;
+}
