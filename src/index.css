@@ -375,7 +375,7 @@ body,
 
 .minimap {
   position: fixed;
-  top: calc(max(10px, env(safe-area-inset-top)) + 132px);
+  top: calc(max(10px, env(safe-area-inset-top)) + 162px);
   right: max(10px, env(safe-area-inset-right));
   width: min(40vw, 180px);
   border: 2px solid var(--ink);
@@ -715,4 +715,22 @@ body,
 
 @media (prefers-reduced-motion: reduce) {
   .spot-miss, .step-miss { animation: none; }
+}
+
+/* the school week: the day pill, and a count on a bubble when a kid needs more than one thing */
+.place-day { background: var(--ink); color: var(--paper); }
+
+.bubble .more {
+  position: absolute;
+  z-index: 2;
+  top: -7px;
+  right: -7px;
+  min-width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--ink);
+  color: #fff;
+  font: 700 11px/1 system-ui, sans-serif;
 }

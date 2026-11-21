@@ -1,6 +1,6 @@
 // The screen overlay: bus clock, kids on the bus, Dreko's anxiety, a bubble over each kid, the button hints
 // and the need list. It only shows what the game tells it; it holds no game rules of its own.
-import { CLOCK, UI } from './config.js'
+import { CLOCK, UI, WEEK } from './config.js'
 import { KIDS } from './family.js'
 import { Icon, InkFilter } from './Icon.jsx'
 import { NEEDS } from './needs.js'
@@ -10,15 +10,21 @@ export const overlayClass = `overlay look-${UI.icons === 'plain' ? 'plain' : 'in
 
 const clockText = (seconds) => `${Math.floor(seconds / 60)}:${String(Math.ceil(seconds % 60)).padStart(2, '0')}`
 
-// known: { kidName: true } for every kid who has told Dreko their need. needs: { kidName: needId } for this game. ready: { kidName: 'walking' | 'stop' }
-// for kids whose need is met. helping: the kid Dreko can help right now, if any.
+// known: { kidName: true } for every kid who has told Dreko what they need. needs: { kidName: [needId, ...] },
+// what each kid still needs today (an empty list is a kid with nothing to do). ready: { kidName: 'walking' |
+// 'stop' } for kids on their way to the bus. helping: the kid Dreko can help right now, if any.
 // bubbleRefs: one ref per kid, in KIDS order; the game moves them every frame.
 export default function Overlay({ place, known, needs, ready, helping, clock, worry, listOpen, onToggleList, onHelp, onPlayAgain, bubbleRefs, settings, children }) {
-  const over = clock.phase === 'left' || clock.phase === 'won'
-  const needOf = (kid) => needs[kid.name] ?? kid.needId
+  const over = clock.phase === 'left' || clock.phase === 'won' || clock.phase === 'dayWon'
+  const left = (kid) => needs[kid.name] ?? []
+  const needOf = (kid) => left(kid)[0]
+  // a kid's bubble: a tick once nothing is left to do, the need once Dreko has asked, a question mark before
+  const stateOf = (kid) => (ready[kid.name] || !left(kid).length ? 'ready' : known[kid.name] ? 'known' : 'ask')
+  const day = WEEK.days[clock.day]
+  const nextDay = WEEK.days[clock.day + 1]
   // while the morning runs this counts who is standing at the stop; once the bus has gone, who got on
   const onBus = over ? clock.boarded : Object.values(ready).filter((s) => s === 'stop').length
-  const earned = CLOCK.perKid * (clock.boarded || 0)
+  const earned = clock.earned || 0
   const learned = Object.keys(known).length
   const timeLeft = clock.left
   const hurry = clock.phase === 'run' && timeLeft <= CLOCK.hurry
@@ -30,10 +36,11 @@ export default function Overlay({ place, known, needs, ready, helping, clock, wo
       {/* a bubble over each kid: a question mark until Dreko walks up, then the need, then a tick */}
       <div className="bubbles" aria-hidden="true">
         {KIDS.map((kid, i) => {
-          const state = ready[kid.name] ? 'ready' : known[kid.name] ? 'known' : 'ask'
+          const state = stateOf(kid)
           return (
             <div key={kid.name} ref={(el) => { bubbleRefs.current[i] = el }} className={`bubble bubble-${state}`}>
               <Icon name={state === 'ready' ? 'tick' : state === 'known' ? needOf(kid) : 'ask'} wash={state === 'ready' ? 'green' : state === 'known' ? 'need' : undefined} />
+              {state === 'known' && left(kid).length > 1 && <b className="more">{left(kid).length}</b>}
             </div>
           )
         })}
@@ -57,7 +64,8 @@ export default function Overlay({ place, known, needs, ready, helping, clock, wo
             <Icon name="bus" wash="gold" />
             <span className="num">{onBus}/{KIDS.length}</span>
           </div>
-          <p className="place">Morning {clock.loop}{place ? ` · ${place}` : ''}</p>
+          <p className="place place-day">{day}{clock.loop > 1 ? ` · try ${clock.loop}` : ''}</p>
+          {place && <p className="place">{place}</p>}
           {children}
         </div>
       </header>
@@ -79,8 +87,19 @@ export default function Overlay({ place, known, needs, ready, helping, clock, wo
           <div className="panel panel-bus">
             <h2>The bus left</h2>
             <p>{onBus} of {KIDS.length} kids made it.</p>
-            {earned > 0 && <p>Tomorrow's alarm rings {earned} seconds earlier.</p>}
-            <p>The morning starts over. Dreko remembers {learned === 1 ? '1 need' : `${learned} needs`}.</p>
+            <p>{day} starts over{earned > 0 ? `, with ${earned} more seconds` : ''}.</p>
+            <p>Dreko remembers what {learned === 1 ? '1 kid needs' : `${learned} kids need`}.</p>
+          </div>
+        </div>
+      )}
+
+      {/* a day done: all ten boarded, and the next day is harder */}
+      {clock.phase === 'dayWon' && (
+        <div className="list" role="status">
+          <div className="panel panel-bus">
+            <h2>{day} done</h2>
+            <p>All ten made the bus.</p>
+            <p>Next: {nextDay}, with {WEEK.needs[clock.day + 1]} needs.</p>
           </div>
         </div>
       )}
@@ -89,9 +108,10 @@ export default function Overlay({ place, known, needs, ready, helping, clock, wo
       {clock.phase === 'won' && (
         <div className="list" role="status">
           <div className="panel panel-bus">
-            <h2>All ten made the bus</h2>
-            <p>Morning {clock.loop}. The driver gives Dreko a nod.</p>
-            <p>Across the street, Mom saw the whole thing.</p>
+            <h2>The week is done</h2>
+            <p>All ten made the bus, Monday to Friday.</p>
+            <p>The driver gives Dreko a nod. Across the street, Mom saw the whole thing.</p>
+            <p>Tomorrow is Saturday. No school.</p>
             <button type="button" className="close again" onClick={onPlayAgain}>Play again</button>
           </div>
         </div>
@@ -100,16 +120,19 @@ export default function Overlay({ place, known, needs, ready, helping, clock, wo
       {listOpen && !over && (
         <div className="list" role="dialog" aria-label="Need list" onClick={onToggleList}>
           <div className="panel" onClick={(e) => e.stopPropagation()}>
-            <h2>Needs <small>{onBus} of {KIDS.length} at the stop</small></h2>
+            <h2>{day} <small>{onBus} of {KIDS.length} at the stop</small></h2>
             <ul className="rows">
               {KIDS.map((kid) => {
-                const state = ready[kid.name] ? 'ready' : known[kid.name] ? 'known' : 'ask'
+                const state = stateOf(kid)
+                const words = !left(kid).length
+                  ? ready[kid.name] === 'stop' ? 'At the bus stop' : ready[kid.name] ? 'On the way' : 'Ready to go'
+                  : state === 'ask' ? 'Not asked yet' : left(kid).map((id) => NEEDS[id]).join(', then ')
                 return (
                   <li key={kid.name} className="row">
                     <span className="face" style={{ backgroundImage: `url(${art}${kid.name.toLowerCase()}.webp)` }} />
                     <span className="who">
                       {kid.name}
-                      <em>{state === 'ask' ? 'Not asked yet' : NEEDS[needOf(kid)] + (ready[kid.name] === 'stop' ? ', at the bus stop' : state === 'ready' ? ', on the way' : '')}</em>
+                      <em>{words}</em>
                     </span>
                     <span className={`slot slot-${state}`}>
                       <Icon name={state === 'ready' ? 'tick' : state === 'known' ? needOf(kid) : 'ask'} wash={state === 'known' ? 'need' : undefined} />

@@ -19,7 +19,14 @@ export const WALK = { stride: 0.4, bounce: 0.05, rock: 0.07, lean: 0.1, squash: 
 // The clock, as Carl set it on Nov 20: 30 seconds to start, tune by playtesting.
 // Each kid who makes the bus moves the next alarm earlier by `perKid` seconds (draft number).
 // `cardMs` is how long the "bus left" card stays up. `hurry` is when the clock turns red, in seconds.
-export const CLOCK = { firstLoop: 30, perKid: 10, cardMs: 3200, hurry: 10 }
+// `dayCardMs` is how long the "day done" card stays up before the next day starts.
+export const CLOCK = { firstLoop: 30, perKid: 10, cardMs: 3200, dayCardMs: 3800, hurry: 10 }
+
+// The school week (Carl and Tessa, Nov 21): each loop is a day, Monday to Friday, and nobody goes to school
+// at the weekend. `needs` is how many needs are in the house on each day, so every day is harder than the
+// last. Every kid has a need every day (Carl, Nov 21: "all kids have needs all the needs reset"), so the
+// count starts at ten, and each step up gives more kids a second need. The numbers are a draft to tune.
+export const WEEK = { days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'], needs: [10, 12, 14, 16, 18] }
 
 // Every mini task: `doneMs` is how long the tick shows before the kid walks off. Each need's own task
 // settings are in src/game/needs.js (MOVES).

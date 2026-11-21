@@ -16,12 +16,12 @@ export default function Game() {
   const soundRef = useRef(null)
   const [soundOn, setSoundOn] = useState(true)
   const [known, setKnown] = useState({})
-  const [needs, setNeeds] = useState({}) // who needs what this game: { kidName: needId }, dealt by the game
+  const [needs, setNeeds] = useState({}) // what each kid still needs today: { kidName: [needId, ...] }, dealt by the game
   const [ready, setReady] = useState({}) // kids whose need is met: 'walking' to the bus stop, or at the 'stop'
   const [near, setNear] = useState(null) // the kid Dreko is standing next to and can help
   const [task, setTask] = useState(null) // the kid whose mini task is open
   const [listOpen, setListOpen] = useState(false)
-  const [clock, setClock] = useState({ phase: 'ready', loop: 1, total: CLOCK.firstLoop, left: CLOCK.firstLoop, boarded: 0 })
+  const [clock, setClock] = useState({ phase: 'ready', day: 0, loop: 1, total: CLOCK.firstLoop, left: CLOCK.firstLoop, boarded: 0, earned: 0 })
   // the newest values, for the key and button handlers that are set up once
   const now = useRef({})
   now.current = { near, task, listOpen }
@@ -33,7 +33,7 @@ export default function Game() {
   const finishTask = useCallback(() => {
     const name = now.current.task
     setTask(null)
-    if (name) gameRef.current?.markReady(name)
+    if (name) gameRef.current?.needMet(name)
   }, [])
   const [place, setPlace] = useState('')
   const [status, setStatus] = useState('loading')
@@ -127,9 +127,10 @@ export default function Game() {
     else sound.stop('tick')
     if (clock.phase === 'left') sound.play('lose')
     else sound.stop('lose', 900)
-    if (clock.phase === 'won') sound.play('win')
-    else sound.stop('win')
-    sound.turn('music', clock.phase === 'left' || clock.phase === 'won' ? 0 : 1, clock.phase === 'left' || clock.phase === 'won' ? 500 : 1200)
+    const won = clock.phase === 'won' || clock.phase === 'dayWon'
+    if (won) sound.play('win')
+    else sound.stop('win', 900)
+    sound.turn('music', clock.phase === 'left' || won ? 0 : 1, clock.phase === 'left' || won ? 500 : 1200)
   }, [hurry, clock.phase])
 
   // Dreko stands still while he helps a kid. The clock keeps running.
@@ -139,7 +140,7 @@ export default function Game() {
 
   // the bus does not wait for a task: when it leaves, or the kid walks off, the task closes
   useEffect(() => {
-    if (task && (clock.phase === 'left' || clock.phase === 'won' || ready[task])) setTask(null)
+    if (task && (clock.phase !== 'run' && clock.phase !== 'ready' || ready[task])) setTask(null)
   }, [task, clock.phase, ready])
 
   useEffect(() => {
@@ -200,7 +201,7 @@ export default function Game() {
       </Overlay>
       {task && (
         <div className={overlayClass}>
-          <Task kid={KIDS.find((k) => k.name === task)} needId={needs[task]} onDone={finishTask} onClose={closeTask} />
+          <Task kid={KIDS.find((k) => k.name === task)} needId={needs[task]?.[0]} onDone={finishTask} onClose={closeTask} />
         </div>
       )}
       <canvas ref={mapRef} className="minimap" hidden={!showMap} aria-label="Tile map of the house" />
