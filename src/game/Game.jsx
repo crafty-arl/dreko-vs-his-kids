@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { CLOCK } from './config.js'
 import { KIDS } from './family.js'
 import Overlay from './Overlay.jsx'
+import { createSound } from './sound.js'
 import Task from './Task.jsx'
 import { startGame } from './world.js'
 
@@ -12,6 +13,8 @@ export default function Game() {
   const mapRef = useRef(null)
   const gameRef = useRef(null)
   const bubbleRefs = useRef([])
+  const soundRef = useRef(null)
+  const [soundOn, setSoundOn] = useState(true)
   const [known, setKnown] = useState({})
   const [ready, setReady] = useState({}) // kids whose need is met: 'walking' to the bus stop, or at the 'stop'
   const [near, setNear] = useState(null) // the kid Dreko is standing next to and can help
@@ -96,6 +99,32 @@ export default function Game() {
     gameRef.current?.setPaused(listOpen)
   }, [listOpen, status])
 
+  // Sound: made once. It stays silent until the player's first tap or key, as browsers ask.
+  useEffect(() => {
+    const sound = createSound()
+    soundRef.current = sound
+    window.__drekoSound = sound // for tests
+    setSoundOn(!sound.muted)
+    return () => {
+      sound.end()
+      soundRef.current = null
+    }
+  }, [])
+
+  // What plays when: the tick-tock for the last seconds before the bus (it waits while the need list is
+  // open, like the clock), the bus-left music while that card is up, and the win music on the win.
+  const hurry = clock.phase === 'run' && clock.left <= CLOCK.hurry && !listOpen
+  useEffect(() => {
+    const sound = soundRef.current
+    if (!sound) return
+    if (hurry) sound.play('tick', { loop: true })
+    else sound.stop('tick')
+    if (clock.phase === 'left') sound.play('lose')
+    else sound.stop('lose', 900)
+    if (clock.phase === 'won') sound.play('win')
+    else sound.stop('win')
+  }, [hurry, clock.phase])
+
   // Dreko stands still while he helps a kid. The clock keeps running.
   useEffect(() => {
     gameRef.current?.setBusy(!!task)
@@ -138,6 +167,19 @@ export default function Game() {
         listOpen={listOpen}
         onToggleList={() => setListOpen((v) => !v)}
         bubbleRefs={bubbleRefs}
+        settings={
+          <button
+            type="button"
+            className="tool"
+            aria-pressed={soundOn}
+            onClick={() => {
+              soundRef.current?.setMuted(soundOn)
+              setSoundOn(!soundOn)
+            }}
+          >
+            Sound {soundOn ? 'on' : 'off'}
+          </button>
+        }
       >
         <div className="tools">
           <button type="button" className="tool" aria-pressed={showMap} onClick={() => setShowMap((v) => !v)}>

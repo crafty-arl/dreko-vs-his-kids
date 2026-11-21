@@ -10,7 +10,7 @@ const clockText = (seconds) => `${Math.floor(seconds / 60)}:${String(Math.ceil(s
 // known: { kidName: true } for every kid who has told Dreko their need. ready: { kidName: 'walking' | 'stop' }
 // for kids whose need is met. helping: the kid Dreko can help right now, if any.
 // bubbleRefs: one ref per kid, in KIDS order; the game moves them every frame.
-export default function Overlay({ place, known, ready, helping, clock, worry, listOpen, onToggleList, onHelp, onPlayAgain, bubbleRefs, children }) {
+export default function Overlay({ place, known, ready, helping, clock, worry, listOpen, onToggleList, onHelp, onPlayAgain, bubbleRefs, settings, children }) {
   const over = clock.phase === 'left' || clock.phase === 'won'
   // while the morning runs this counts who is standing at the stop; once the bus has gone, who got on
   const onBus = over ? clock.boarded : Object.values(ready).filter((s) => s === 'stop').length
@@ -46,6 +46,7 @@ export default function Overlay({ place, known, ready, helping, clock, worry, li
             <Icon name="sweat" wash="red" />
             <span className="bar bar-worry"><i style={{ width: `${Math.max(0.06, worry) * 100}%` }} /></span>
           </div>
+          {settings}
         </div>
         <div className="hud-side hud-right">
           <div className="chip" aria-label={`${onBus} of ${KIDS.length} kids ${over ? 'on the bus' : 'at the bus stop'}`}>
