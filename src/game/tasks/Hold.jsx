@@ -1,14 +1,20 @@
 // Task 1: hold, and let go on the gold line. One button and good timing.
 import { useEffect, useRef } from 'react'
+import { ANXIETY } from '../config.js'
 import { DROP_KEYS, useKeys, useTaskLoop } from './loop.js'
 
 export const how = () => 'Hold, and let go on the gold line.'
 
 // spec: { fillMs, from, to }. The bar fills in fillMs; letting go between from and to (parts of the bar) wins.
-export default function Hold({ spec, onWin, setSay }) {
+// shake: 0 to 1, how much Dreko's hands shake. The gold zone shrinks around its middle as it goes up.
+export default function Hold({ spec, onWin, setSay, shake = 0 }) {
   const fillRef = useRef(null)
   const holdRef = useRef(null)
-  const s = useRef({ v: 0, holding: false, over: false, padHeld: false }).current
+  const s = useRef({ v: 0, holding: false, over: false, padHeld: false, from: spec.from, to: spec.to }).current
+  const mid = (spec.from + spec.to) / 2
+  const half = ((spec.to - spec.from) / 2) * (1 - ANXIETY.shrink * shake)
+  s.from = mid - half
+  s.to = mid + half
 
   const show = () => {
     if (fillRef.current) fillRef.current.style.width = `${Math.min(1, s.v) * 100}%`
@@ -29,7 +35,7 @@ export default function Hold({ spec, onWin, setSay }) {
   }
   const release = () => {
     if (s.over || !s.holding) return
-    if (s.v < spec.from) return miss('Too soon. Try again.')
+    if (s.v < s.from) return miss('Too soon. Try again.')
     s.holding = false
     s.over = true
     holdRef.current?.classList.remove('is-held')
@@ -43,7 +49,7 @@ export default function Hold({ spec, onWin, setSay }) {
     s.padHeld = held
     if (s.holding) {
       s.v += dt / spec.fillMs
-      if (s.v > spec.to) miss('Too far. Try again.')
+      if (s.v > s.to) miss('Too far. Try again.')
       else show()
     }
   })
@@ -83,7 +89,7 @@ export default function Hold({ spec, onWin, setSay }) {
     <>
       <div className="meter" aria-hidden="true">
         <i ref={fillRef} />
-        <b style={{ left: `${spec.from * 100}%`, width: `${(spec.to - spec.from) * 100}%` }} />
+        <b style={{ left: `${s.from * 100}%`, width: `${(s.to - s.from) * 100}%` }} data-width={(s.to - s.from).toFixed(3)} />
       </div>
       <button ref={holdRef} type="button" className="hold">
         <span className="key key-a">A</span>Hold

@@ -18,10 +18,9 @@ export const WALK = { stride: 0.4, bounce: 0.05, rock: 0.07, lean: 0.1, squash: 
 
 // The clock, as Carl set it on Nov 20: 30 seconds to start, tune by playtesting.
 // Each kid who makes the bus moves the next alarm earlier by `perKid` seconds (draft number).
-// `cardMs` is how long the "bus left" card stays up. `hurry` is when the clock turns red, in seconds.
-// `dayCardMs` is how long the "day done" card stays up before the next day starts.
+// `hurry` is when the clock turns red, in seconds. The "bus left" and "day done" cards stay up until Continue.
 // `forgotMs` is how long a kid stands at the bus stop saying "Oh wait, I forgot something!" before they turn back.
-export const CLOCK = { firstLoop: 30, perKid: 10, cardMs: 3200, dayCardMs: 3800, hurry: 10, forgotMs: 1300 }
+export const CLOCK = { firstLoop: 30, perKid: 10, hurry: 10, forgotMs: 1300 }
 
 // The school week (Carl and Tessa, Nov 21): each loop is a day, Monday to Friday, and nobody goes to school
 // at the weekend. `needs` is how many needs are in the house on each day, so every day is harder than the
@@ -46,6 +45,16 @@ export const ROAM = { fromDay: 3, where: 'room', speed: 1.5, restMs: [300, 1100]
 // `restMs` to look at the house (Carl, Nov 21: "mom pacing the streets and trying to look into the house").
 // Every number is a draft. A picture that is not in public/art/ yet is drawn as a grey stand-in.
 export const BUS = { at: [6.5, 15.9], from: -7, to: 24, speed: 9, size: 2.7, comeAt: 10, boardMs: 170, nodMs: 1100, driver: [0.78, 1.42], driverSize: 0.66, mom: [9.6, 17.7], momSize: 1.9, pace: { from: 2.5, to: 12.5, speed: 1.3, restMs: [900, 1900] }, cam: [6.9, 15.5] }
+
+// Dreko's anxiety, from 0 (calm) to 1. It climbs with the clock: the part of the try that is gone. Every need
+// he has learned today takes `perLearned` off and every kid counted takes `perCounted` off, so a later try,
+// where he remembers more, is calmer (the game map: "His anxiety eases as he learns each kid"). A miss in a
+// mini task adds `perMiss`, which wears off by `settle` a second.
+// What it does (Carl's pick, Nov 21): above `shakyFrom` his hands shake in the mini tasks, more the higher it
+// is: the gold zone of a hold shrinks by up to `shrink` of its width and the pen of a trace wobbles by up to
+// `wobble` card units. Above `sweatFrom` sweat drops fly off him. `breathMs` is the deep breath he takes when
+// it drops. Every number is a draft to tune by playing.
+export const ANXIETY = { perLearned: 0.03, perCounted: 0.03, perMiss: 0.08, settle: 0.012, shakyFrom: 0.45, shrink: 0.45, wobble: 9, sweatFrom: 0.55, breathMs: 900 }
 
 // Every mini task: `doneMs` is how long the tick shows before the kid walks off. Each need's own task
 // settings are in src/game/needs.js (MOVES).

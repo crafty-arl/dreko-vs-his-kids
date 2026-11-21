@@ -5,7 +5,7 @@ import { H, PLACES, ROWS, W, zone } from './house.js'
 import { WALL } from './config.js'
 
 const TEXTURES = ['f-kitchen', 'f-bath', 'f-cubby', 'f-hall', 'f-runner', 'f-walk', 'f-road', 'w-kitchen', 'w-window', 'w-bath', 'w-cubby', 'w-hall', 'w-out']
-const CUTOUTS = ['dreko', 'dreko-back', 'stove', 'fridge', 'counter', 'table', 'cereal-bowl', ...KIDS.map(kidArt)]
+const CUTOUTS = ['dreko', 'dreko-back', 'stove', 'fridge', 'counter', 'table', 'cereal-bowl', 'icons/sweat', ...KIDS.map(kidArt)]
 // Pictures that may not be made yet. Until a file is in public/art/, the game draws a labelled grey stand-in.
 const LATER = { bus: [2, 'BUS'], driver: [1, 'DRIVER'], mom: [0.5, 'MOM'], 'mom-back': [0.5, 'MOM back'] } // name: [width for a height of 1, label]
 const PX = 128 // one tile's picture is this many pixels across

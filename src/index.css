@@ -563,7 +563,7 @@ body,
   color: var(--ink);
 }
 
-.close.again { margin: 14px auto 0; }
+.close.again { display: flex; align-items: center; gap: 8px; margin: 14px auto 0; }
 
 /* ---------- the four mini task moves ---------- */
 .task-play.is-over { pointer-events: none; opacity: 0.6; }
@@ -784,3 +784,24 @@ body,
 
 /* while a mini task is open the log shrinks, so it never covers the task's buttons */
 .rules-log.rules-log-small { max-height: 15vh; }
+
+/* anxiety: the bar flashes and settles on a calm moment */
+.chip-calm { animation: chip-calm 0.9s ease-out; }
+.chip-calm .bar i { transition: width 0.5s ease-out; }
+@keyframes chip-calm {
+  0% { box-shadow: 0 0 0 0 rgba(46, 139, 87, 0.75); scale: 1.08; }
+  100% { box-shadow: 0 0 0 16px rgba(46, 139, 87, 0); scale: 1; }
+}
+
+/* shaky hands: the whole play area of a mini task trembles, more the more anxious Dreko is */
+.task-play.is-shaky { animation: task-shake 0.13s linear infinite; }
+@keyframes task-shake {
+  0% { translate: calc(var(--shake) * -2.2px) calc(var(--shake) * 1px); }
+  25% { translate: calc(var(--shake) * 1.6px) calc(var(--shake) * -1.8px); }
+  50% { translate: calc(var(--shake) * -1.2px) calc(var(--shake) * -1.2px); }
+  75% { translate: calc(var(--shake) * 2.2px) calc(var(--shake) * 1.6px); }
+  100% { translate: calc(var(--shake) * -2.2px) calc(var(--shake) * 1px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .chip-calm, .task-play.is-shaky { animation: none; }
+}

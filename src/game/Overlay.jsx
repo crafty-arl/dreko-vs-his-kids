@@ -17,7 +17,7 @@ const clockText = (seconds) => `${Math.floor(seconds / 60)}:${String(Math.ceil(s
 // bus, at the stop remembering one more need, on the way back in, or waiting for the bus.
 // helping: the kid Dreko can help right now, if any.
 // bubbleRefs: one ref per kid, in KIDS order; the game moves them every frame.
-export default function Overlay({ place, known, needs, ready, helping, clock, worry, listOpen, onToggleList, onHelp, onPlayAgain, bubbleRefs, settings, children }) {
+export default function Overlay({ place, known, needs, ready, helping, clock, worry, calm, listOpen, onToggleList, onHelp, onPlayAgain, onContinue, bubbleRefs, settings, children }) {
   const over = clock.phase === 'left' || clock.phase === 'won' || clock.phase === 'dayWon'
   const left = (kid) => needs[kid.name] ?? []
   const needOf = (kid) => left(kid)[0]
@@ -66,7 +66,8 @@ export default function Overlay({ place, known, needs, ready, helping, clock, wo
             <span className="num">{clockText(timeLeft)}</span>
             <span className="bar"><i style={{ width: `${Math.max(0, Math.min(1, timeLeft / clock.total)) * 100}%` }} /></span>
           </div>
-          <div className="chip" aria-label={`Anxiety ${Math.round(worry * 100)} percent`}>
+          {/* the key makes the chip play its calm flash again on every calm moment */}
+          <div key={calm} className={`chip ${calm ? 'chip-calm' : ''}`} aria-label={`Anxiety ${Math.round(worry * 100)} percent`}>
             <Icon name="sweat" wash="red" />
             <span className="bar bar-worry"><i style={{ width: `${Math.max(0.06, worry) * 100}%` }} /></span>
           </div>
@@ -102,6 +103,7 @@ export default function Overlay({ place, known, needs, ready, helping, clock, wo
             <p>{onBus} of {KIDS.length} kids made it.</p>
             <p>{day} starts over{earned > 0 ? `, with ${earned} more seconds` : ''}.</p>
             <p>Dreko remembers what {learned === 1 ? '1 kid needs' : `${learned} kids need`}.</p>
+            <button type="button" className="close again" onClick={onContinue} autoFocus><span className="key key-a">A</span>Continue</button>
           </div>
         </div>
       )}
@@ -113,6 +115,7 @@ export default function Overlay({ place, known, needs, ready, helping, clock, wo
             <h2>{day} done</h2>
             <p>All ten made the bus.</p>
             <p>Next: {nextDay}, with {WEEK.needs[clock.day + 1]} needs.</p>
+            <button type="button" className="close again" onClick={onContinue} autoFocus><span className="key key-a">A</span>Continue</button>
           </div>
         </div>
       )}

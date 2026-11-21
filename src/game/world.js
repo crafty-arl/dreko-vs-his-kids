@@ -2,7 +2,7 @@
 import * as THREE from 'three'
 import { GMThree, GMTiles } from '../engine/index.js'
 import { buildHouse, card, cutout, loadArt } from './art.js'
-import { BUS, CAMERA, CLOCK, DREKO, GOLD, INK, PAPER, ROAM, TILE, WALK, WEEK } from './config.js'
+import { ANXIETY, BUS, CAMERA, CLOCK, DREKO, GOLD, INK, PAPER, ROAM, TILE, WALK, WEEK } from './config.js'
 import { KIDS, kidArt } from './family.js'
 import { H, PLACES, PROPS, ROAD_Y, ROWS, SMALL, SPOTS, W, floorTiles, placeName } from './house.js'
 import { createInput } from './input.js'
@@ -86,6 +86,13 @@ export async function startGame(canvas, hooks = {}) {
   // that is playing once the morning is over: 'in' (it pulls up), 'board' (kids get on one by one), 'nod'
   // (the driver nods, only when all ten are on) and 'out' (it drives off). `line` is who is still to get on.
   const bus = { x: BUS.from, to: BUS.from, scene: null, t: 0, line: [] }
+  // his anxiety: `stress` is what misses have added, `breath` runs while he takes a deep breath, and `drops`
+  // are the sweat drops in the air right now
+  let stress = 0
+  let breath = 0
+  let sweatIn = 0
+  const drops = []
+  const sweatImg = cutout(img['icons/sweat'])
   const dreko = { at: DREKO.start.slice(), path: null, len: 0, gone: 0, go: 0, face: 'front', flip: false, moving: false }
   const drekoWalk = createWalker({ height: DREKO.height })
   let walkTest = false
@@ -143,7 +150,7 @@ export async function startGame(canvas, hooks = {}) {
     const tick = Math.ceil(clock.left * 10)
     if (!force && tick === clock.told) return
     clock.told = tick
-    hooks.onClock?.({ phase: clock.phase, day: clock.day, loop: clock.loop, total: clock.total, left: clock.left, boarded: clock.boarded, earned: clock.earned, scene: !!bus.scene })
+    hooks.onClock?.({ phase: clock.phase, day: clock.day, loop: clock.loop, total: clock.total, left: clock.left, boarded: clock.boarded, earned: clock.earned, scene: !!bus.scene, worry: worry() })
   }
   const tellReady = () => {
     const out = {}
@@ -158,7 +165,6 @@ export async function startGame(canvas, hooks = {}) {
     clock.left = 0
     say(`The bus left. ${clock.boarded} of ${kids.length} kids counted. Earned for the next try: ${clock.boarded} kids x ${CLOCK.perKid} seconds = ${clock.earned} seconds.`)
     clock.phase = 'left'
-    clock.card = CLOCK.cardMs
     dreko.path = null
     busScene()
     tellClock(true)
@@ -168,7 +174,6 @@ export async function startGame(canvas, hooks = {}) {
     clock.boarded = kids.length
     clock.phase = clock.day === WEEK.days.length - 1 ? 'won' : 'dayWon'
     say(`All ten are counted with ${clock.left.toFixed(1)} seconds to spare. ${WEEK.days[clock.day]} is done${clock.phase === 'won' ? ', and so is the week' : `. Next is ${WEEK.days[clock.day + 1]}`}.`)
-    clock.card = CLOCK.dayCardMs
     dreko.path = null
     busScene()
     tellClock(true)
@@ -282,6 +287,9 @@ export async function startGame(canvas, hooks = {}) {
     bus.x = BUS.from
     bus.to = BUS.from
     bus.scene = null
+    stress = 0
+    breath = 0
+    drops.length = 0
     dreko.at = DREKO.start.slice()
     dreko.path = null
     dreko.face = 'front'
@@ -363,6 +371,20 @@ export async function startGame(canvas, hooks = {}) {
   // `known` counts, per kid, how many of today's needs he has been told; it is kept when the day starts over.
   const known = {}
   // the overlay gets, per kid, how many of the needs still to do he knows
+  // How anxious he is right now, 0 to 1: the clock pushes it up, what he knows and who is counted bring it down
+  function worry() {
+    const learned = Object.values(known).reduce((n, v) => n + v, 0)
+    const v = 1 - Math.max(0, clock.left) / clock.total - ANXIETY.perLearned * learned - ANXIETY.perCounted * counted() + stress
+    return Math.max(0, Math.min(1, v))
+  }
+  const percent = () => `${Math.round(worry() * 100)}%`
+  // a calm moment: the bar drops and he takes a deep breath
+  function calm(why) {
+    breath = ANXIETY.breathMs
+    hooks.onCalm?.()
+    tellClock(true)
+    say(`Calm moment: ${why} Dreko takes a breath. Anxiety is at ${percent()}.`)
+  }
   const tellKnown = () => hooks.onKnown?.(Object.fromEntries(Object.keys(known).map((name) => [name, Math.max(0, known[name] - doneOf(name))])))
   const head = new THREE.Vector3()
   const lift = 1 / Math.cos((CAMERA.tilt * Math.PI) / 180) // the cut-outs are stretched by this to stand upright
@@ -397,13 +419,11 @@ export async function startGame(canvas, hooks = {}) {
       dreko.path = null
     }
     if (clock.phase === 'left' || clock.phase === 'dayWon') {
-      // the bus has gone: Dreko stands still while the card is up, then the same day starts over,
-      // or the next day starts if everyone made it
+      // the bus has gone: Dreko stands still while the card is up
       ix = 0
       iy = 0
       dreko.path = null
-      if (!bus.scene) clock.card -= dt // the card waits for the bus to drive off
-      if (clock.card <= 0) nextMorning(clock.phase === 'left' ? 'retry' : 'day')
+      // the card comes up once the bus has driven off, and waits for Continue (Carl, Nov 21)
     } else if (clock.phase === 'ready') {
       if (ix || iy || dreko.path) {
         clock.phase = 'run'
@@ -412,6 +432,14 @@ export async function startGame(canvas, hooks = {}) {
       }
     } else if (clock.phase === 'run' && !clock.paused) {
       clock.left -= dt / 1000
+      stress = Math.max(0, stress - (ANXIETY.settle * dt) / 1000)
+      // sweat flies off him when he is very anxious, faster the worse it is
+      const w = worry()
+      sweatIn -= dt
+      if (w >= ANXIETY.sweatFrom && sweatIn <= 0) {
+        drops.push({ t: 0, life: 520 + Math.random() * 260, side: Math.random() < 0.5 ? -1 : 1, reach: 0.35 + Math.random() * 0.4, rise: 0.25 + Math.random() * 0.3 })
+        sweatIn = 420 - 300 * ((w - ANXIETY.sweatFrom) / (1 - ANXIETY.sweatFrom))
+      }
       // a kid with nothing left to do heads for the bus on their own
       for (const k of kids) if (k.state === 'home' && !needs[k.kid.name].length) sendToStop(k)
       // the bus pulls up for the last seconds
@@ -425,6 +453,11 @@ export async function startGame(canvas, hooks = {}) {
     }
     stepBus(dt)
     stepMom(dt)
+    breath = Math.max(0, breath - dt)
+    for (let i = drops.length - 1; i >= 0; i--) {
+      drops[i].t += dt
+      if (drops[i].t >= drops[i].life) drops.splice(i, 1)
+    }
     const from = dreko.at
     let side = 0
     dreko.moving = false
@@ -486,7 +519,10 @@ export async function startGame(canvas, hooks = {}) {
         say(k.state === 'home' ? `Dreko walked up to ${name} in the ${roomName(needs[name][0])}, who tells him: ${NEEDS[needs[name][0]]}.` : `Dreko caught ${name} ${k.state === 'forgot' ? 'at the bus stop' : `on the way back to the ${roomName(needs[name][0])}`}, who tells him: ${NEEDS[needs[name][0]]}.`)
       }
     }
-    if (learned) tellKnown()
+    if (learned) {
+      tellKnown()
+      calm(`he learned a need, which takes ${Math.round(ANXIETY.perLearned * 100)} off.`)
+    }
 
     // the kid Dreko can help right now: the nearest one within reach who still needs something
     let who = null
@@ -632,6 +668,13 @@ export async function startGame(canvas, hooks = {}) {
 
   function draw(now) {
     const nod = bus.scene === 'nod' ? Math.sin((1 - bus.t / BUS.nodMs) * Math.PI * 2) ** 2 : 0
+    // a deep breath: he swells and settles
+    const him = posed('dreko', dreko.at, drekoArt, DREKO.height, drekoWalk, 0, { ghost: GOLD })
+    if (breath > 0) {
+      const puff = Math.sin((1 - breath / ANXIETY.breathMs) * Math.PI)
+      him.h *= 1 + 0.07 * puff
+      him.wide *= 1 + 0.05 * puff
+    }
     const things = [
       ...still,
       ...kids.filter((k) => k.state !== 'aboard').map((k) => posed(k.kid.name, k.at, k.art, k.size, k.walker, k.kid.floats ? 0.3 + 0.05 * Math.sin(now / 500) : 0)),
@@ -639,7 +682,13 @@ export async function startGame(canvas, hooks = {}) {
       { id: 'bus', at: [bus.x, BUS.at[1]], level: 0, img: busImg, size: BUS.size, wide: busWide },
       // the driver sits a hair in front of the bus picture, at its window; his nod is two dips of the head
       { id: 'driver', at: [bus.x + BUS.driver[0] * Math.SQRT1_2 + 0.04, BUS.at[1] - BUS.driver[0] * Math.SQRT1_2 + 0.04], level: (BUS.driver[1] - 0.1 * nod) * lift, img: driverImg, size: BUS.driverSize, wide: driverWide, roll: -0.22 * nod },
-      posed('dreko', dreko.at, drekoArt, DREKO.height, drekoWalk, 0, { ghost: GOLD }),
+      him,
+      ...drops.map((d, i) => {
+        // each drop arcs out from his head to one side of the screen and falls
+        const p = d.t / d.life
+        const out = d.side * d.reach * p * Math.SQRT1_2
+        return { id: 'sweat' + i, at: [dreko.at[0] + out + 0.05, dreko.at[1] - out + 0.05], level: DREKO.height * lift * 0.8 + d.rise * Math.sin(p * Math.PI) - 0.5 * p * p, img: sweatImg, size: 0.36 * (1 - 0.45 * p) }
+      }),
     ]
     view.setThings(things)
     view.setMarks([
@@ -790,10 +839,24 @@ export async function startGame(canvas, hooks = {}) {
       const id = needs[name].shift()
       tellNeeds()
       tellKnown()
+      if (!needs[name].length) calm(`${name} is counted, which takes ${Math.round(ANXIETY.perCounted * 100)} off.`)
       say(`${name}: ${NEEDS[id]} done with ${MOVE_NAMES[MOVES[id].move]}. ${needs[name].length ? `${name} walks to the bus stop. Not remembered yet: ${NEEDS[needs[name][0]]}, in the ${roomName(needs[name][0])}.` : `Nothing left, so ${name} counts for the bus now: ${counted()} of ${kids.length}. ${name} walks to the stop.`}`)
       sendToStop(k)
     },
     playAgain() { nextMorning('fresh') },
+    // Continue on the "bus left" or "day done" card: the same day again, or the next day
+    next() {
+      if (bus.scene) return
+      if (clock.phase === 'left') nextMorning('retry')
+      else if (clock.phase === 'dayWon') nextMorning('day')
+    },
+    // a miss in a mini task: his anxiety jumps
+    miss() {
+      stress += ANXIETY.perMiss
+      tellClock(true)
+      say(`The miss pushes his anxiety up by ${Math.round(ANXIETY.perMiss * 100)}, to ${percent()}.`)
+    },
+    addStress(v) { stress += v; tellClock(true) }, // for tests
     // for tests: clear a kid's needs and send them off, give kids needs by hand ({ kidName: needId or a list }),
     // and jump to a day (0 is Monday)
     markReady(name) {
@@ -820,7 +883,7 @@ export async function startGame(canvas, hooks = {}) {
       nextMorning('day')
     },
     // for tests and for the next systems (needs, clock): where things are right now
-    state: () => ({ bus: { x: bus.x, scene: bus.scene }, mom: { at: mom.at.slice(), look: mom.look }, dreko: dreko.at.slice(), place, moving: dreko.moving, known: Object.keys(known), told: { ...known }, rooms: Object.fromEntries(kids.map((k) => [k.kid.name, needs[k.kid.name].length ? ROOM_OF[needs[k.kid.name][0]] : null])), spots: Object.fromEntries(kids.map((k) => [k.kid.name, k.spot.slice()])), plan: JSON.parse(JSON.stringify(spots)), deal: copy(deal), solid: kids.filter((k) => k.state === 'home' && k.solid).map((k) => k.kid.name), at: Object.fromEntries(kids.map((k) => [k.kid.name, k.at.slice()])), clock: { phase: clock.phase, day: clock.day, loop: clock.loop, left: clock.left, total: clock.total, boarded: clock.boarded, earned: clock.earned }, near, needs: copy(needs), kids: Object.fromEntries(kids.map((k) => [k.kid.name, k.state])) }),
+    state: () => ({ worry: worry(), drops: drops.length, bus: { x: bus.x, scene: bus.scene }, mom: { at: mom.at.slice(), look: mom.look }, dreko: dreko.at.slice(), place, moving: dreko.moving, known: Object.keys(known), told: { ...known }, rooms: Object.fromEntries(kids.map((k) => [k.kid.name, needs[k.kid.name].length ? ROOM_OF[needs[k.kid.name][0]] : null])), spots: Object.fromEntries(kids.map((k) => [k.kid.name, k.spot.slice()])), plan: JSON.parse(JSON.stringify(spots)), deal: copy(deal), solid: kids.filter((k) => k.state === 'home' && k.solid).map((k) => k.kid.name), at: Object.fromEntries(kids.map((k) => [k.kid.name, k.at.slice()])), clock: { phase: clock.phase, day: clock.day, loop: clock.loop, left: clock.left, total: clock.total, boarded: clock.boarded, earned: clock.earned }, near, needs: copy(needs), kids: Object.fromEntries(kids.map((k) => [k.kid.name, k.state])) }),
     stop() {
       stopped = true
       input.stop()

@@ -28,6 +28,7 @@ export default function Game() {
     const line = { id: logId.current, stamp, text: e.text }
     setLog((list) => [line, ...list].slice(0, 80))
   }, [])
+  const [calm, setCalm] = useState(0) // counts the calm moments, so the anxiety bar can show each one
   const [known, setKnown] = useState({})
   const [needs, setNeeds] = useState({}) // what each kid still needs today: { kidName: [needId, ...] }, dealt by the game
   const [ready, setReady] = useState({}) // kids whose need is met: 'walking' to the bus stop, or at the 'stop'
@@ -37,7 +38,7 @@ export default function Game() {
   const [clock, setClock] = useState({ phase: 'ready', day: 0, loop: 1, total: CLOCK.firstLoop, left: CLOCK.firstLoop, boarded: 0, earned: 0 })
   // the newest values, for the key and button handlers that are set up once
   const now = useRef({})
-  now.current = { near, task, listOpen, needs }
+  now.current = { near, task, listOpen, needs, card: (clock.phase === 'left' || clock.phase === 'dayWon') && !clock.scene }
   const openTask = useCallback(() => {
     const s = now.current
     if (!s.near || s.task || s.listOpen) return
@@ -82,7 +83,10 @@ export default function Game() {
       })
     }
     const onButton = (button) => {
-      if (button === 'a') openTask()
+      if (button === 'a') {
+        if (now.current.card) gameRef.current?.next() // Continue on the card between tries and days
+        else openTask()
+      }
       if (button === 'y' && !now.current.task) setListOpen((v) => !v)
       if (button === 'b') {
         setListOpen(false)
@@ -90,7 +94,7 @@ export default function Game() {
       }
     }
 
-    startGame(canvasRef.current, { onPlace: setPlace, onWalk: () => setWalked(true), onKnown: setKnown, onNeeds: setNeeds, onReady: setReady, onNear: setNear, onBubbles, onButton, onClock: setClock, onEvent: note })
+    startGame(canvasRef.current, { onPlace: setPlace, onWalk: () => setWalked(true), onKnown: setKnown, onNeeds: setNeeds, onReady: setReady, onNear: setNear, onBubbles, onButton, onClock: setClock, onEvent: note, onCalm: () => setCalm((n) => n + 1) })
       .then((g) => {
         if (cancelled) return g.stop()
         game = g
@@ -176,6 +180,14 @@ export default function Game() {
     const anyKey = (e) => {
       if (now.current.task) return // the mini task reads the keys while it is open
       const key = e.key.toLowerCase()
+      if (now.current.card) {
+        // Continue on the card between tries and days
+        if ((key === 'e' || key === ' ' || key === 'enter') && !e.repeat) {
+          e.preventDefault()
+          gameRef.current?.next()
+        }
+        return
+      }
       if (/^(arrow|[wasd]$)/i.test(e.key)) setWalked(true)
       if (key === 'y') setListOpen((v) => !v)
       if (key === 'escape' || key === 'b') setListOpen(false)
@@ -191,7 +203,7 @@ export default function Game() {
   return (
     <div ref={stageRef} className="stage">
       <canvas ref={canvasRef} className="world" />
-      {/* Anxiety climbs as the clock runs down, and a little less for every kid Dreko has learned. Draft numbers. */}
+      {/* Anxiety comes from the game (world.js): up with the clock and with misses, down with what Dreko learns */}
       <Overlay
         place={place}
         known={known}
@@ -200,8 +212,10 @@ export default function Game() {
         helping={!task && !listOpen && (clock.phase === 'run' || clock.phase === 'ready') ? KIDS.find((k) => k.name === near) : null}
         onHelp={openTask}
         onPlayAgain={() => gameRef.current?.playAgain()}
+        onContinue={() => gameRef.current?.next()}
         clock={clock}
-        worry={(1 - clock.left / clock.total) * (1 - 0.05 * Object.keys(known).length)}
+        worry={clock.worry ?? 0}
+        calm={calm}
         listOpen={listOpen}
         onToggleList={() => setListOpen((v) => !v)}
         bubbleRefs={bubbleRefs}
@@ -235,7 +249,7 @@ export default function Game() {
       </Overlay>
       {task && (
         <div className={overlayClass}>
-          <Task kid={KIDS.find((k) => k.name === task)} needId={needs[task]?.[0]} onDone={finishTask} onClose={closeTask} onEvent={note} />
+          <Task kid={KIDS.find((k) => k.name === task)} needId={needs[task]?.[0]} onDone={finishTask} onClose={closeTask} onEvent={note} worry={clock.worry ?? 0} onMiss={() => gameRef.current?.miss()} />
         </div>
       )}
       {showLog && (
