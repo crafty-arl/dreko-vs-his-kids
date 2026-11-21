@@ -1,11 +1,19 @@
+:root {
+  --paper: #f1eee7;
+  --ink: #070707;
+  --gold: #bd8430;
+}
+
 html,
 body,
 #root {
   margin: 0;
   height: 100%;
-  background: #f1eee7;
-  color: #070707;
-  font-family: system-ui, -apple-system, sans-serif;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  overflow: hidden;
+  overscroll-behavior: none;
 }
 
 .stage {
@@ -13,12 +21,787 @@ body,
   inset: 0;
 }
 
-.title {
+.world {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+}
+
+/* ---------- the screen overlay ---------- */
+.overlay {
   position: fixed;
-  top: 16px;
-  left: 16px;
-  margin: 0;
-  font-size: 20px;
-  letter-spacing: 0.02em;
+  inset: 0;
   pointer-events: none;
+  --ui-bg: rgba(241, 238, 231, 0.94);
+  --need: #7a3fc4;
+  --done: #2e8b57;
+  --worry: #d9534f;
+  --wash-need: rgba(150, 110, 215, 0.38);
+  --wash-gold: rgba(189, 132, 48, 0.4);
+  --wash-red: rgba(217, 83, 79, 0.32);
+  --wash-green: rgba(46, 139, 87, 0.34);
+  --key-y: var(--gold);
+}
+
+.overlay.ui-grey {
+  --need: var(--ink);
+  --done: var(--ink);
+  --worry: #8d8a83;
+  --wash-need: rgba(7, 7, 7, 0.13);
+  --wash-gold: rgba(7, 7, 7, 0.13);
+  --wash-red: rgba(7, 7, 7, 0.13);
+  --wash-green: rgba(7, 7, 7, 0.13);
+  --key-y: var(--ink);
+}
+
+.icon {
+  width: 26px;
+  height: 26px;
+  flex: none;
+  overflow: visible;
+}
+
+.icon .line {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.look-inked .icon .line {
+  stroke-width: 2.7;
+}
+
+.icon .wash {
+  stroke: none;
+}
+
+.wash-need { fill: var(--wash-need); }
+.wash-gold { fill: var(--wash-gold); }
+.wash-red { fill: var(--wash-red); }
+.wash-green { fill: var(--wash-green); }
+
+.hud {
+  position: absolute;
+  top: max(10px, env(safe-area-inset-top));
+  left: max(10px, env(safe-area-inset-left));
+  right: max(10px, env(safe-area-inset-right));
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.hud-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.hud-right {
+  align-items: flex-end;
+}
+
+.chip,
+.hint {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  padding: 5px 12px 5px 8px;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: var(--ui-bg);
+  color: var(--ink);
+}
+
+.look-inked .chip,
+.look-inked .hint {
+  border-radius: 22px 26px 21px 27px / 26px 21px 27px 22px;
+}
+
+.num {
+  font: 400 26px/1 Anton, Impact, 'Arial Narrow', sans-serif;
+  letter-spacing: 0.02em;
+}
+
+.bar {
+  width: 62px;
+  height: 9px;
+  border-radius: 99px;
+  background: #bdb8ad;
+  overflow: hidden;
+}
+
+.bar i {
+  display: block;
+  height: 100%;
+  border-radius: 99px;
+  background: var(--gold);
+}
+
+.ui-grey .bar i { background: var(--ink); }
+.bar-worry i { background: var(--worry); }
+
+.place {
+  margin: 0;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--ui-bg);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.tools {
+  display: flex;
+  gap: 6px;
+}
+
+.tool {
+  pointer-events: auto;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: var(--ui-bg);
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.tool[aria-pressed='true'] { background: var(--gold); }
+
+.tool:focus-visible,
+.hint-button:focus-visible,
+.close:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 2px;
+}
+
+/* a bubble over each kid; the game moves them every frame */
+.bubbles {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.bubble {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 40px;
+  height: 40px;
+  margin-top: -9px;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  background: var(--ui-bg);
+  color: var(--ink);
+  visibility: hidden;
+  will-change: transform;
+}
+
+.look-inked .bubble { border-radius: 52% 48% 50% 50% / 48% 52% 48% 52%; }
+
+.bubble::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -7px;
+  width: 9px;
+  height: 9px;
+  background: var(--ui-bg);
+  border-right: 2px solid var(--ink);
+  border-bottom: 2px solid var(--ink);
+  transform: translateX(-50%) rotate(45deg);
+}
+
+.bubble .icon { position: relative; z-index: 1; }
+.look-plain .bubble-known { color: var(--need); }
+.bubble-ready { color: var(--done); }
+
+.hints {
+  position: absolute;
+  left: max(10px, env(safe-area-inset-left));
+  right: max(10px, env(safe-area-inset-right));
+  bottom: max(10px, env(safe-area-inset-bottom));
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.hint {
+  min-height: 44px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.hint-button {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.key {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font: 400 17px/1 Anton, Impact, 'Arial Narrow', sans-serif;
+}
+
+.key-y { background: var(--key-y); }
+.key-stick { color: var(--ink); }
+.key-stick .icon { width: 28px; height: 28px; }
+
+/* the need list, on Y */
+.list {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px;
+  background: rgba(7, 7, 7, 0.55);
+  pointer-events: auto;
+}
+
+.panel {
+  width: min(100%, 420px);
+  max-height: 100%;
+  overflow-y: auto;
+  box-sizing: border-box;
+  padding: 14px;
+  border: 2px solid var(--ink);
+  border-radius: 18px;
+  background: var(--paper);
+}
+
+.panel h2 {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin: 0 0 10px;
+  font: 400 24px/1 Anton, Impact, 'Arial Narrow', sans-serif;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.panel h2 small {
+  font: 700 12px/1 system-ui, sans-serif;
+  letter-spacing: 0.04em;
+}
+
+.rows {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.row em {
+  display: block;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 400;
+  color: #5d5a54;
+}
+
+.face,
+.slot {
+  width: 36px;
+  height: 36px;
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  background-color: #fff;
+}
+
+.face {
+  background-repeat: no-repeat;
+  background-size: 135% auto;
+  background-position: 50% 3%;
+}
+
+.slot {
+  display: grid;
+  place-items: center;
+  color: var(--ink);
+}
+
+.slot-ask { border-style: dashed; }
+.look-plain .slot-known { color: var(--need); }
+.slot-ready { color: #fff; background: var(--done); border-color: var(--done); }
+
+.close {
+  display: block;
+  min-height: 44px;
+  margin: 12px 0 0 auto;
+  padding: 0 18px;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--paper);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+@media (min-width: 720px) {
+  .panel { width: min(100%, 640px); }
+  .rows { grid-template-columns: 1fr 1fr; gap: 8px 22px; }
+}
+
+.minimap {
+  position: fixed;
+  top: calc(max(10px, env(safe-area-inset-top)) + 162px);
+  right: max(10px, env(safe-area-inset-right));
+  width: min(40vw, 180px);
+  border: 2px solid var(--ink);
+  border-radius: 6px;
+  image-rendering: pixelated;
+  pointer-events: none;
+}
+
+.note {
+  position: fixed;
+  left: 50%;
+  bottom: calc(max(10px, env(safe-area-inset-bottom)) + 58px);
+  transform: translateX(-50%);
+  margin: 0;
+  padding: 8px 14px;
+  max-width: calc(100vw - 32px);
+  box-sizing: border-box;
+  border-radius: 999px;
+  background: rgba(250, 248, 243, 0.94);
+  font-size: 14px;
+  text-align: center;
+  pointer-events: none;
+}
+
+
+/* painted icons are pictures: a little bigger than the line shapes so they read */
+.icon-painted {
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
+}
+
+.bubble .icon-painted,
+.slot .icon-painted {
+  width: 32px;
+  height: 32px;
+}
+
+.bubble:has(.icon-painted) {
+  width: 44px;
+  height: 44px;
+}
+
+.slot:has(.icon-painted) {
+  width: 42px;
+  height: 42px;
+  background: #fff;
+}
+
+.key-stick .icon-painted {
+  width: 30px;
+  height: 30px;
+}
+
+/* the last seconds before the bus: the clock turns red and beats */
+.chip-hurry {
+  border-color: var(--worry);
+  color: var(--worry);
+  animation: hurry 0.5s ease-in-out infinite alternate;
+}
+
+.chip-hurry .bar i { background: var(--worry); }
+
+@keyframes hurry {
+  to { transform: scale(1.06); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chip-hurry { animation: none; }
+}
+
+.panel-bus {
+  width: min(100%, 340px);
+  text-align: center;
+}
+
+.panel-bus h2 {
+  display: block;
+  font-size: 34px;
+}
+
+.panel-bus p {
+  margin: 6px 0 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+/* A Help, next to a kid Dreko can help */
+.key-a { background: var(--key-a, #2e8b57); }
+
+.hint-help {
+  border-color: var(--ink);
+  background: var(--gold);
+}
+
+/* the mini task: hold, and let go on the gold line */
+.panel-task {
+  width: min(100%, 340px);
+  text-align: center;
+}
+
+.task-art {
+  width: 96px;
+  height: 96px;
+  margin: 4px auto 12px;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  background: #fff;
+}
+
+.task-art .icon,
+.task-art .icon-painted {
+  width: 72px;
+  height: 72px;
+}
+
+.task-done { color: var(--done); }
+
+.meter {
+  position: relative;
+  height: 26px;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.meter i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0;
+  background: #4a4741;
+  border-right: 3px solid var(--ink);
+  box-sizing: border-box;
+}
+
+/* the line to let go on */
+.meter b {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: rgba(189, 132, 48, 0.78);
+  border-left: 2px solid var(--ink);
+  border-right: 2px solid var(--ink);
+  box-sizing: border-box;
+}
+
+.task-say {
+  min-height: 1.3em;
+  margin: 10px 0 12px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.hold {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 72px;
+  border: 2px solid var(--ink);
+  border-radius: 18px;
+  background: var(--gold);
+  color: var(--ink);
+  font: 400 26px/1 Anton, Impact, 'Arial Narrow', sans-serif;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.hold.is-held { transform: translateY(2px) scale(0.985); filter: brightness(0.92); }
+.hold:disabled { opacity: 0.55; }
+.hold:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+
+.close.task-close {
+  margin: 10px auto 0;
+  background: transparent;
+  color: var(--ink);
+}
+
+.close.again { display: flex; align-items: center; gap: 8px; margin: 14px auto 0; }
+
+/* ---------- the four mini task moves ---------- */
+.task-play.is-over { pointer-events: none; opacity: 0.6; }
+.panel-task .task-art { width: 76px; height: 76px; margin-bottom: 8px; }
+.panel-task .task-art .icon,
+.panel-task .task-art .icon-painted { width: 56px; height: 56px; }
+.panel-task .task-say { margin: 6px 0 12px; }
+.panel-task .hold { margin-top: 12px; }
+
+.task-keys {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: 10px 0 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: #5d5a54;
+}
+
+.task-keys .key { width: 22px; height: 22px; font-size: 13px; }
+.key-stick-small { background: var(--ink); font-family: system-ui, sans-serif !important; font-size: 9px !important; letter-spacing: -1px; }
+.key-wide { width: auto; padding: 0 9px; border-radius: 999px; background: var(--ink); font-size: 14px; }
+
+/* task 2: pieces */
+.piece-now {
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 10px;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--ink);
+  border-radius: 14px;
+  background: var(--gold);
+}
+
+.spots {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+
+.spot {
+  flex: 1;
+  max-width: 76px;
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 2px dashed var(--ink);
+  border-radius: 14px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.spot-cursor { outline: 4px solid var(--gold); outline-offset: 2px; }
+.spot-full { border-style: solid; background: var(--done); color: #fff; }
+.spot-miss { animation: nope 0.3s; }
+
+.mark { width: 44px; height: 44px; fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linejoin: round; opacity: 0.45; }
+.mark.is-solid { fill: currentColor; opacity: 1; }
+.mark-num { font: 400 34px/1 Anton, Impact, 'Arial Narrow', sans-serif; opacity: 0.4; }
+.mark-num.is-solid { opacity: 1; }
+
+@keyframes nope {
+  25% { transform: translateX(-6px); }
+  75% { transform: translateX(6px); }
+}
+
+/* task 3: trace */
+.trace {
+  display: block;
+  width: 100%;
+  border: 2px solid var(--ink);
+  border-radius: 14px;
+  background: #fff;
+  touch-action: none;
+  cursor: crosshair;
+}
+
+.trace-line { fill: none; stroke: #b9b5ac; stroke-width: 3; stroke-dasharray: 2 8; stroke-linecap: round; }
+.trace-ink { fill: none; stroke: var(--ink); stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }
+.trace-dot { fill: #fff; stroke: var(--ink); stroke-width: 2; }
+.trace-dot.is-next { fill: var(--gold); }
+.trace-dot.is-passed { fill: var(--ink); }
+.trace-pen { fill: var(--need); stroke: #fff; stroke-width: 2; }
+
+/* task 4: left and right */
+.steps {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.step {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  background: #fff;
+  opacity: 0.45;
+}
+
+.step svg { width: 24px; height: 24px; fill: none; stroke: var(--ink); stroke-width: 3.5; stroke-linecap: round; stroke-linejoin: round; }
+.step-now { opacity: 1; background: var(--gold); transform: scale(1.15); }
+.step.is-done { opacity: 1; background: var(--done); border-color: var(--done); }
+.step.is-done svg { stroke: #fff; }
+.step-miss { animation: nope 0.3s; }
+
+.sides {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.side {
+  flex: 1;
+  min-height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 2px solid var(--ink);
+  border-radius: 18px;
+  background: var(--gold);
+  color: var(--ink);
+  font: 400 22px/1 Anton, Impact, 'Arial Narrow', sans-serif;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.side:active { transform: translateY(2px); filter: brightness(0.92); }
+
+@media (max-height: 520px) {
+  .panel-task .task-art { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spot-miss, .step-miss { animation: none; }
+}
+
+/* the school week: the day pill */
+.place-day { background: var(--ink); color: var(--paper); }
+
+/* a kid at the bus stop who remembers one more need says so, in a speech bubble */
+.bubble.bubble-forgot {
+  z-index: 2;
+  width: 124px;
+  height: auto;
+  padding: 6px 8px;
+  border-radius: 14px;
+  background: #fff;
+  text-align: center;
+  animation: forgot-pop 0.22s ease-out;
+}
+.bubble-forgot::after { background: #fff; }
+.bubble .forgot {
+  position: relative;
+  z-index: 1;
+  font-weight: 700;
+  font-size: 13px;
+  line-height: 1.2;
+}
+@keyframes forgot-pop {
+  from { scale: 0.6; }
+  to { scale: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bubble.bubble-forgot { animation: none; }
+}
+
+/* the rules log: every rule that fires, as plain lines. A tool for checking the game, not part of it. */
+.rules-log {
+  position: fixed;
+  z-index: 3;
+  left: max(10px, env(safe-area-inset-left));
+  right: max(10px, env(safe-area-inset-right));
+  bottom: calc(max(10px, env(safe-area-inset-bottom)) + 56px);
+  max-height: 34vh;
+  overflow-y: auto;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  border: 2px solid var(--ink);
+  border-radius: 12px;
+  background: rgba(241, 238, 231, 0.95);
+  font-size: 12px;
+  line-height: 1.35;
+  overscroll-behavior: contain;
+}
+
+.rules-log h2 {
+  margin: 0 0 4px;
+  font: 400 15px/1.1 Anton, Impact, 'Arial Narrow', sans-serif;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.rules-log h2 small { font: 600 10px/1 system-ui, sans-serif; letter-spacing: 0.04em; color: #5d5a54; }
+.rules-log ol { margin: 0; padding: 0; list-style: none; }
+.rules-log li { padding: 3px 0; border-top: 1px solid rgba(7, 7, 7, 0.12); }
+.rules-log b { margin-right: 4px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+@media (min-width: 720px) {
+  .rules-log { right: auto; width: 440px; }
+}
+
+/* while a mini task is open the log shrinks, so it never covers the task's buttons */
+.rules-log.rules-log-small { max-height: 15vh; }
+
+/* anxiety: the bar flashes and settles on a calm moment */
+.chip-calm { animation: chip-calm 0.9s ease-out; }
+.chip-calm .bar i { transition: width 0.5s ease-out; }
+@keyframes chip-calm {
+  0% { box-shadow: 0 0 0 0 rgba(46, 139, 87, 0.75); scale: 1.08; }
+  100% { box-shadow: 0 0 0 16px rgba(46, 139, 87, 0); scale: 1; }
+}
+
+/* shaky hands: the whole play area of a mini task trembles, more the more anxious Dreko is */
+.task-play.is-shaky { animation: task-shake 0.13s linear infinite; }
+@keyframes task-shake {
+  0% { translate: calc(var(--shake) * -2.2px) calc(var(--shake) * 1px); }
+  25% { translate: calc(var(--shake) * 1.6px) calc(var(--shake) * -1.8px); }
+  50% { translate: calc(var(--shake) * -1.2px) calc(var(--shake) * -1.2px); }
+  75% { translate: calc(var(--shake) * 2.2px) calc(var(--shake) * 1.6px); }
+  100% { translate: calc(var(--shake) * -2.2px) calc(var(--shake) * 1px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .chip-calm, .task-play.is-shaky { animation: none; }
 }
