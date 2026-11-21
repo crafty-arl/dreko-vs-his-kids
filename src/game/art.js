@@ -34,6 +34,8 @@ export async function loadArt() {
     ...CUTOUTS.map(async (n) => (img[n] = await loadImage(base + n + '.webp'))),
     ...Object.keys(LATER).map(async (n) => (img[n] = await loadImage(base + n + '.webp').catch(() => standIn(...LATER[n])))),
   ])
+  // until Mom's back view exists, her front view stands in for it
+  if (img['mom-back'].standIn && !img.mom.standIn) img['mom-back'] = img.mom
   return img
 }
 
@@ -56,6 +58,7 @@ function standIn(wide, label) {
   g.fillText(label, c.width / 2, h / 2 - 16)
   g.font = `${wide < 1 ? 17 : 22}px system-ui, sans-serif`
   g.fillText('stand-in', c.width / 2, h / 2 + 22)
+  c.standIn = true
   return c
 }
 

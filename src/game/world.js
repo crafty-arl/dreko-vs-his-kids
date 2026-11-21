@@ -638,7 +638,7 @@ export async function startGame(canvas, hooks = {}) {
       posed('mom', mom.at, momArt, BUS.momSize, momWalk, 0.09 * Math.sin(Math.min(1, mom.tip / 900) * Math.PI)),
       { id: 'bus', at: [bus.x, BUS.at[1]], level: 0, img: busImg, size: BUS.size, wide: busWide },
       // the driver sits a hair in front of the bus picture, at its window; his nod is two dips of the head
-      { id: 'driver', at: [bus.x + BUS.driver[0] * Math.SQRT1_2 + 0.04, BUS.at[1] - BUS.driver[0] * Math.SQRT1_2 + 0.04], level: BUS.driver[1] - 0.12 * nod, img: driverImg, size: BUS.driverSize, wide: driverWide, roll: -0.22 * nod },
+      { id: 'driver', at: [bus.x + BUS.driver[0] * Math.SQRT1_2 + 0.04, BUS.at[1] - BUS.driver[0] * Math.SQRT1_2 + 0.04], level: (BUS.driver[1] - 0.1 * nod) * lift, img: driverImg, size: BUS.driverSize, wide: driverWide, roll: -0.22 * nod },
       posed('dreko', dreko.at, drekoArt, DREKO.height, drekoWalk, 0, { ghost: GOLD }),
     ]
     view.setThings(things)

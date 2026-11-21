@@ -56,5 +56,5 @@ This game uses generative AI: Claude for code, and Higgsfield (Nano Banana 2) fo
 - **GM! 2.5D Map Engine** by Carl Lewis, made before the jam: `src/engine/gm-tiles.js` and `src/engine/gm-three.js`. The copy here has four small changes, each marked `DREKO` in the file (smooth drawing, walls of any height, cut-outs that stand upright, and a width and tip on each cut-out for the walk).
 - **three.js** (MIT licence), **React** and **Vite**.
 - **Anton** font (SIL Open Font Licence), through the `@fontsource/anton` package.
-- **Art** in `public/art/`: made with Higgsfield (Nano Banana 2) from Carl's character and world notes. This includes the 16 icons in `public/art/icons/`, made on Nov 20 inside the jam window.
+- **Art** in `public/art/`: made with Higgsfield (Nano Banana 2) from Carl's character and world notes. This includes the 16 icons in `public/art/icons/`, made on Nov 20 inside the jam window. The bus, the driver and Mom (`bus.webp`, `driver.webp`, `mom.webp`) were made the same way on Nov 21.
 - **Sounds and music** in `public/`: custom tracks made for this game, plus `mixkit-tick-tock-clock-timer-1045.wav` from Mixkit (check the Mixkit licence before submission).
