@@ -12,6 +12,7 @@ export default function Game() {
   const bubbleRefs = useRef([])
   const [known, setKnown] = useState({})
   const [listOpen, setListOpen] = useState(false)
+  const [clock, setClock] = useState({ phase: 'ready', loop: 1, total: CLOCK.firstLoop, left: CLOCK.firstLoop })
   const [place, setPlace] = useState('')
   const [status, setStatus] = useState('loading')
   const [showMap, setShowMap] = useState(false)
@@ -40,7 +41,7 @@ export default function Game() {
       if (button === 'b') setListOpen(false)
     }
 
-    startGame(canvasRef.current, { onPlace: setPlace, onWalk: () => setWalked(true), onKnown: setKnown, onBubbles, onButton })
+    startGame(canvasRef.current, { onPlace: setPlace, onWalk: () => setWalked(true), onKnown: setKnown, onBubbles, onButton, onClock: setClock })
       .then((g) => {
         if (cancelled) return g.stop()
         game = g
@@ -71,6 +72,11 @@ export default function Game() {
     gameRef.current?.setWalkTest(walkTest)
   }, [walkTest, status])
 
+  // the clock waits while the need list is open
+  useEffect(() => {
+    gameRef.current?.setPaused(listOpen)
+  }, [listOpen, status])
+
   useEffect(() => {
     const anyKey = (e) => {
       if (/^(arrow|[wasd]$)/i.test(e.key)) setWalked(true)
@@ -84,13 +90,13 @@ export default function Game() {
   return (
     <div ref={stageRef} className="stage">
       <canvas ref={canvasRef} className="world" />
-      {/* The clock, the anxiety and the bus count are not running yet: they show the start of loop 1. */}
+      {/* Anxiety climbs as the clock runs down, and a little less for every kid Dreko has learned. Draft numbers. */}
       <Overlay
         place={place}
         known={known}
         ready={{}}
-        timeLeft={CLOCK.firstLoop}
-        worry={0.15}
+        clock={clock}
+        worry={(1 - clock.left / clock.total) * (1 - 0.05 * Object.keys(known).length)}
         listOpen={listOpen}
         onToggleList={() => setListOpen((v) => !v)}
         bubbleRefs={bubbleRefs}

@@ -18,7 +18,8 @@ export const WALK = { stride: 0.4, bounce: 0.05, rock: 0.07, lean: 0.1, squash: 
 
 // The clock, as Carl set it on Nov 20: 30 seconds to start, tune by playtesting.
 // Each kid who makes the bus moves the next alarm earlier by `perKid` seconds (draft number).
-export const CLOCK = { firstLoop: 30, perKid: 10 }
+// `cardMs` is how long the "bus left" card stays up. `hurry` is when the clock turns red, in seconds.
+export const CLOCK = { firstLoop: 30, perKid: 10, cardMs: 3200, hurry: 10 }
 
 // The look of the screen overlay, as Carl picked on Nov 20: colour, with painted icons in the game's pen and
 // watercolour look.

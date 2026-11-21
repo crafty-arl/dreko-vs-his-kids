@@ -9,8 +9,11 @@ const clockText = (seconds) => `${Math.floor(seconds / 60)}:${String(Math.ceil(s
 
 // known: { kidName: true } for every kid who has told Dreko their need. ready: the same for kids who are done.
 // bubbleRefs: one ref per kid, in KIDS order; the game moves them every frame.
-export default function Overlay({ place, known, ready, timeLeft, worry, listOpen, onToggleList, bubbleRefs, children }) {
+export default function Overlay({ place, known, ready, clock, worry, listOpen, onToggleList, bubbleRefs, children }) {
   const onBus = Object.keys(ready).length
+  const learned = Object.keys(known).length
+  const timeLeft = clock.left
+  const hurry = clock.phase === 'run' && timeLeft <= CLOCK.hurry
   const art = import.meta.env.BASE_URL + 'art/'
   return (
     <div className={`overlay look-${UI.icons === 'plain' ? 'plain' : 'inked'} ui-${UI.overlay}`}>
@@ -30,10 +33,10 @@ export default function Overlay({ place, known, ready, timeLeft, worry, listOpen
 
       <header className="hud">
         <div className="hud-side">
-          <div className="chip" role="timer" aria-label={`Bus leaves in ${Math.ceil(timeLeft)} seconds`}>
+          <div className={`chip ${hurry ? 'chip-hurry' : ''}`} role="timer" aria-label={`Bus leaves in ${Math.ceil(timeLeft)} seconds`}>
             <Icon name="clock" wash="gold" />
             <span className="num">{clockText(timeLeft)}</span>
-            <span className="bar"><i style={{ width: `${Math.max(0, Math.min(1, timeLeft / CLOCK.firstLoop)) * 100}%` }} /></span>
+            <span className="bar"><i style={{ width: `${Math.max(0, Math.min(1, timeLeft / clock.total)) * 100}%` }} /></span>
           </div>
           <div className="chip" aria-label={`Anxiety ${Math.round(worry * 100)} percent`}>
             <Icon name="sweat" wash="red" />
@@ -45,7 +48,7 @@ export default function Overlay({ place, known, ready, timeLeft, worry, listOpen
             <Icon name="bus" wash="gold" />
             <span className="num">{onBus}/{KIDS.length}</span>
           </div>
-          {place && <p className="place">{place}</p>}
+          <p className="place">Morning {clock.loop}{place ? ` · ${place}` : ''}</p>
           {children}
         </div>
       </header>
@@ -57,7 +60,17 @@ export default function Overlay({ place, known, ready, timeLeft, worry, listOpen
         </button>
       </footer>
 
-      {listOpen && (
+      {clock.phase === 'left' && (
+        <div className="list" role="status">
+          <div className="panel panel-bus">
+            <h2>The bus left</h2>
+            <p>{onBus} of {KIDS.length} kids made it.</p>
+            <p>The morning starts over. Dreko remembers {learned === 1 ? '1 need' : `${learned} needs`}.</p>
+          </div>
+        </div>
+      )}
+
+      {listOpen && clock.phase !== 'left' && (
         <div className="list" role="dialog" aria-label="Need list" onClick={onToggleList}>
           <div className="panel" onClick={(e) => e.stopPropagation()}>
             <h2>Needs <small>{onBus} of {KIDS.length} on the bus</small></h2>

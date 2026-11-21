@@ -19,10 +19,11 @@ An entry for **Tiny Loop Jam 2026**. The jam window runs from Nov 20, 18:00 UTC 
 - One fixed diagonal camera that follows him.
 - One shared walk for the whole family (`src/game/walk.js`): a step bounce, a rock, a lean, a squash on landing, a slow breath when standing, and a paper-card turn. It is code only and uses the art as it is. The **Walk test** button makes every kid pace so the walk can be checked.
 - The **Map** button shows the tile map on top of the picture, for checking walls and doors.
-- The screen overlay (`src/game/Overlay.jsx`): bus clock, kids on the bus, Dreko's anxiety, a bubble over each kid and the need list on Y. A kid's bubble is a question mark until Dreko walks up to them, then it shows their need. The clock, the anxiety and the bus count do not run yet.
+- The screen overlay (`src/game/Overlay.jsx`): bus clock, kids on the bus, Dreko's anxiety, a bubble over each kid and the need list on Y. A kid's bubble is a question mark until Dreko walks up to them, then it shows their need.
+- The bus clock and the morning loop: the clock starts when Dreko first moves and runs down from 30 seconds. At zero the bus leaves, a card says so, and the morning starts over with Dreko back in the kitchen and every need he has learned still known. His anxiety climbs as the clock runs down. The clock waits while the need list is open.
 - The icon set: 16 painted icons in `public/art/icons/` (ten needs, the question mark, clock, bus, sweat drop, tick and stick). `src/game/Icon.jsx` also holds a hand-inked line version of each as a fallback.
 
-Not in yet: drawn walking frames, the clock, the kids' needs, the bus, mom and the driver, and sound.
+Not in yet: the mini tasks (so no kid can get ready or board yet), the bus, mom and the driver, drawn walking frames, the needs shuffle, and sound.
 
 ## Run it
 

@@ -429,3 +429,36 @@ body,
   width: 30px;
   height: 30px;
 }
+
+/* the last seconds before the bus: the clock turns red and beats */
+.chip-hurry {
+  border-color: var(--worry);
+  color: var(--worry);
+  animation: hurry 0.5s ease-in-out infinite alternate;
+}
+
+.chip-hurry .bar i { background: var(--worry); }
+
+@keyframes hurry {
+  to { transform: scale(1.06); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chip-hurry { animation: none; }
+}
+
+.panel-bus {
+  width: min(100%, 340px);
+  text-align: center;
+}
+
+.panel-bus h2 {
+  display: block;
+  font-size: 34px;
+}
+
+.panel-bus p {
+  margin: 6px 0 0;
+  font-size: 16px;
+  font-weight: 600;
+}

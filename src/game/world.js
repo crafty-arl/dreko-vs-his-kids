@@ -2,7 +2,7 @@
 import * as THREE from 'three'
 import { GMThree, GMTiles } from '../engine/index.js'
 import { buildHouse, cutout, loadArt } from './art.js'
-import { CAMERA, DREKO, GOLD, INK, PAPER, TILE, WALK } from './config.js'
+import { CAMERA, CLOCK, DREKO, GOLD, INK, PAPER, TILE, WALK } from './config.js'
 import { KIDS, kidArt } from './family.js'
 import { H, PROPS, ROWS, SMALL, W, placeName } from './house.js'
 import { createInput } from './input.js'
@@ -51,6 +51,35 @@ export async function startGame(canvas, hooks = {}) {
   const dreko = { at: DREKO.start.slice(), path: null, len: 0, gone: 0, go: 0, face: 'front', flip: false, moving: false }
   const drekoWalk = createWalker({ height: DREKO.height })
   let walkTest = false
+  // The morning: 'ready' until Dreko first moves, 'run' while the clock counts down, 'left' while the
+  // "bus left" card is up. Then the morning starts over with everything he has learned still known.
+  const clock = { phase: 'ready', loop: 1, total: CLOCK.firstLoop, left: CLOCK.firstLoop, card: 0, paused: false, told: -1 }
+  const tellClock = (force) => {
+    const tick = Math.ceil(clock.left * 10)
+    if (!force && tick === clock.told) return
+    clock.told = tick
+    hooks.onClock?.({ phase: clock.phase, loop: clock.loop, total: clock.total, left: clock.left })
+  }
+  function busLeaves() {
+    clock.left = 0
+    clock.phase = 'left'
+    clock.card = CLOCK.cardMs
+    dreko.path = null
+    tellClock(true)
+  }
+  function nextMorning() {
+    clock.loop += 1
+    // every kid who made the bus buys the next morning more time (no kid can board yet, so this is the same 30)
+    clock.total = CLOCK.firstLoop
+    clock.left = clock.total
+    clock.phase = 'run'
+    dreko.at = DREKO.start.slice()
+    dreko.path = null
+    dreko.face = 'front'
+    dreko.flip = false
+    cam.at = dreko.at.slice()
+    tellClock(true)
+  }
   // what Dreko has learned: a kid tells him their need the first time he walks up to them
   const known = {}
   const head = new THREE.Vector3()
@@ -79,7 +108,24 @@ export async function startGame(canvas, hooks = {}) {
   }
 
   function step(dt) {
-    const [ix, iy] = input.read()
+    let [ix, iy] = input.read()
+    if (clock.phase === 'left') {
+      // the bus has gone: Dreko stands still while the card is up, then the morning starts over
+      ix = 0
+      iy = 0
+      dreko.path = null
+      clock.card -= dt
+      if (clock.card <= 0) nextMorning()
+    } else if (clock.phase === 'ready') {
+      if (ix || iy || dreko.path) {
+        clock.phase = 'run'
+        tellClock(true)
+      }
+    } else if (!clock.paused) {
+      clock.left -= dt / 1000
+      if (clock.left <= 0) busLeaves()
+      else tellClock()
+    }
     const from = dreko.at
     let side = 0
     dreko.moving = false
@@ -309,8 +355,9 @@ export async function startGame(canvas, hooks = {}) {
     resize,
     setMapCanvas(c) { mapCanvas = c },
     setWalkTest(on) { walkTest = !!on },
+    setPaused(on) { clock.paused = !!on },
     // for tests and for the next systems (needs, clock): where things are right now
-    state: () => ({ dreko: dreko.at.slice(), place, moving: dreko.moving, known: Object.keys(known) }),
+    state: () => ({ dreko: dreko.at.slice(), place, moving: dreko.moving, known: Object.keys(known), clock: { phase: clock.phase, loop: clock.loop, left: clock.left } }),
     stop() {
       stopped = true
       input.stop()

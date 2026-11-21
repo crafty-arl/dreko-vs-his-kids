@@ -14,4 +14,4 @@ export const NEEDS = {
 }
 
 // How close Dreko has to walk, in tiles, before a kid tells him what they need.
-export const ASK_DISTANCE = 1.3
+export const ASK_DISTANCE = 1.2
