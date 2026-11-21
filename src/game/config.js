@@ -20,7 +20,8 @@ export const WALK = { stride: 0.4, bounce: 0.05, rock: 0.07, lean: 0.1, squash: 
 // Each kid who makes the bus moves the next alarm earlier by `perKid` seconds (draft number).
 // `cardMs` is how long the "bus left" card stays up. `hurry` is when the clock turns red, in seconds.
 // `dayCardMs` is how long the "day done" card stays up before the next day starts.
-export const CLOCK = { firstLoop: 30, perKid: 10, cardMs: 3200, dayCardMs: 3800, hurry: 10 }
+// `forgotMs` is how long a kid stands at the bus stop saying "Oh wait, I forgot something!" before they turn back.
+export const CLOCK = { firstLoop: 30, perKid: 10, cardMs: 3200, dayCardMs: 3800, hurry: 10, forgotMs: 1300 }
 
 // The school week (Carl and Tessa, Nov 21): each loop is a day, Monday to Friday, and nobody goes to school
 // at the weekend. `needs` is how many needs are in the house on each day, so every day is harder than the

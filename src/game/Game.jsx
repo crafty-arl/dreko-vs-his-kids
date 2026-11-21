@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { CLOCK } from './config.js'
+import { CLOCK, WEEK } from './config.js'
 import { KIDS } from './family.js'
 import Overlay, { overlayClass } from './Overlay.jsx'
 import { createSound } from './sound.js'
+import { MOVES, MOVE_NAMES, NEEDS } from './needs.js'
 import Task from './Task.jsx'
 import { startGame } from './world.js'
 
@@ -15,6 +16,18 @@ export default function Game() {
   const bubbleRefs = useRef([])
   const soundRef = useRef(null)
   const [soundOn, setSoundOn] = useState(true)
+  // The rules log: a line for every rule that fires, newest first. Open the page with ?log to start with it showing.
+  const [log, setLog] = useState([])
+  const [showLog, setShowLog] = useState(() => new URLSearchParams(window.location.search).has('log'))
+  const logId = useRef(0)
+  const note = useCallback((event) => {
+    const e = typeof event === 'string' ? { text: event, ...(gameRef.current?.state().clock ?? { day: 0, loop: 1, left: CLOCK.firstLoop }) } : event
+    const seconds = Math.ceil(e.left)
+    const stamp = `${WEEK.days[e.day].slice(0, 3)}${e.loop > 1 ? ` try ${e.loop}` : ''} ${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`
+    logId.current += 1
+    const line = { id: logId.current, stamp, text: e.text }
+    setLog((list) => [line, ...list].slice(0, 80))
+  }, [])
   const [known, setKnown] = useState({})
   const [needs, setNeeds] = useState({}) // what each kid still needs today: { kidName: [needId, ...] }, dealt by the game
   const [ready, setReady] = useState({}) // kids whose need is met: 'walking' to the bus stop, or at the 'stop'
@@ -24,12 +37,18 @@ export default function Game() {
   const [clock, setClock] = useState({ phase: 'ready', day: 0, loop: 1, total: CLOCK.firstLoop, left: CLOCK.firstLoop, boarded: 0, earned: 0 })
   // the newest values, for the key and button handlers that are set up once
   const now = useRef({})
-  now.current = { near, task, listOpen }
+  now.current = { near, task, listOpen, needs }
   const openTask = useCallback(() => {
     const s = now.current
-    if (s.near && !s.task && !s.listOpen) setTask(s.near)
-  }, [])
-  const closeTask = useCallback(() => setTask(null), [])
+    if (!s.near || s.task || s.listOpen) return
+    const id = s.needs[s.near]?.[0]
+    if (id) note(`Dreko presses A next to ${s.near}. Task opens: ${MOVE_NAMES[MOVES[id].move]}, for ${NEEDS[id]}. The clock keeps running.`)
+    setTask(s.near)
+  }, [note])
+  const closeTask = useCallback(() => {
+    if (now.current.task) note(`Dreko steps back from ${now.current.task}'s task. Nothing done.`)
+    setTask(null)
+  }, [note])
   const finishTask = useCallback(() => {
     const name = now.current.task
     setTask(null)
@@ -51,9 +70,13 @@ export default function Game() {
 
     // the game moves the bubbles itself, every frame, without asking React to draw again
     const onBubbles = (points) => {
-      points.forEach(([x, y, show], i) => {
+      points.forEach(([px, py, seen, pin], i) => {
         const el = bubbleRefs.current[i]
         if (!el) return
+        // a kid who says "Oh wait, I forgot something!" is kept on screen, at the edge nearest to them
+        const x = pin ? Math.max(72, Math.min(stage.clientWidth - 72, px)) : px
+        const y = pin ? Math.max(170, Math.min(stage.clientHeight - 84, py)) : py
+        const show = seen || pin
         el.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) translate(-50%, -100%)`
         el.style.visibility = show ? 'visible' : 'hidden'
       })
@@ -63,11 +86,11 @@ export default function Game() {
       if (button === 'y' && !now.current.task) setListOpen((v) => !v)
       if (button === 'b') {
         setListOpen(false)
-        setTask(null)
+        closeTask()
       }
     }
 
-    startGame(canvasRef.current, { onPlace: setPlace, onWalk: () => setWalked(true), onKnown: setKnown, onNeeds: setNeeds, onReady: setReady, onNear: setNear, onBubbles, onButton, onClock: setClock })
+    startGame(canvasRef.current, { onPlace: setPlace, onWalk: () => setWalked(true), onKnown: setKnown, onNeeds: setNeeds, onReady: setReady, onNear: setNear, onBubbles, onButton, onClock: setClock, onEvent: note })
       .then((g) => {
         if (cancelled) return g.stop()
         game = g
@@ -99,9 +122,12 @@ export default function Game() {
   }, [walkTest, status])
 
   // the clock waits while the need list is open
+  const listWas = useRef(false)
   useEffect(() => {
     gameRef.current?.setPaused(listOpen)
-  }, [listOpen, status])
+    if (listOpen !== listWas.current) note(listOpen ? 'The need list is open, so the clock waits.' : 'The need list is closed, so the clock runs again.')
+    listWas.current = listOpen
+  }, [listOpen, status, note])
 
   // Sound: made once. It stays silent until the player's first tap or key, as browsers ask.
   useEffect(() => {
@@ -120,11 +146,14 @@ export default function Game() {
   // the need list is open, like the clock), the bus-left music while that card is up, and the win music on
   // the win. The menu music fades out under those two, as Carl asked on Nov 21, and comes back after.
   const hurry = clock.phase === 'run' && clock.left <= CLOCK.hurry && !listOpen
+  const hurryWas = useRef(false)
   useEffect(() => {
     const sound = soundRef.current
     if (!sound) return
     if (hurry) sound.play('tick', { loop: true })
     else sound.stop('tick')
+    if (hurry && !hurryWas.current) note(`Last ${CLOCK.hurry} seconds: the clock turns red and the tick-tock starts.`)
+    hurryWas.current = hurry
     if (clock.phase === 'left') sound.play('lose')
     else sound.stop('lose', 900)
     const won = clock.phase === 'won' || clock.phase === 'dayWon'
@@ -177,17 +206,22 @@ export default function Game() {
         onToggleList={() => setListOpen((v) => !v)}
         bubbleRefs={bubbleRefs}
         settings={
-          <button
-            type="button"
-            className="tool"
-            aria-pressed={soundOn}
-            onClick={() => {
-              soundRef.current?.setMuted(soundOn)
-              setSoundOn(!soundOn)
-            }}
-          >
-            Sound {soundOn ? 'on' : 'off'}
-          </button>
+          <div className="tools">
+            <button
+              type="button"
+              className="tool"
+              aria-pressed={soundOn}
+              onClick={() => {
+                soundRef.current?.setMuted(soundOn)
+                setSoundOn(!soundOn)
+              }}
+            >
+              Sound {soundOn ? 'on' : 'off'}
+            </button>
+            <button type="button" className="tool" aria-pressed={showLog} onClick={() => setShowLog((v) => !v)}>
+              Log
+            </button>
+          </div>
         }
       >
         <div className="tools">
@@ -201,8 +235,18 @@ export default function Game() {
       </Overlay>
       {task && (
         <div className={overlayClass}>
-          <Task kid={KIDS.find((k) => k.name === task)} needId={needs[task]?.[0]} onDone={finishTask} onClose={closeTask} />
+          <Task kid={KIDS.find((k) => k.name === task)} needId={needs[task]?.[0]} onDone={finishTask} onClose={closeTask} onEvent={note} />
         </div>
+      )}
+      {showLog && (
+        <section className="rules-log" aria-label="Rules log">
+          <h2>Rules log <small>newest first</small></h2>
+          <ol>
+            {log.map((line) => (
+              <li key={line.id}><b>{line.stamp}</b> {line.text}</li>
+            ))}
+          </ol>
+        </section>
       )}
       <canvas ref={mapRef} className="minimap" hidden={!showMap} aria-label="Tile map of the house" />
       {status === 'loading' && <p className="note">Waking the house up</p>}

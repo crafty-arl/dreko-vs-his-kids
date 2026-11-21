@@ -717,20 +717,67 @@ body,
   .spot-miss, .step-miss { animation: none; }
 }
 
-/* the school week: the day pill, and a count on a bubble when a kid needs more than one thing */
+/* the school week: the day pill */
 .place-day { background: var(--ink); color: var(--paper); }
 
-.bubble .more {
-  position: absolute;
+/* a kid at the bus stop who remembers one more need says so, in a speech bubble */
+.bubble.bubble-forgot {
   z-index: 2;
-  top: -7px;
-  right: -7px;
-  min-width: 18px;
-  height: 18px;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  background: var(--ink);
-  color: #fff;
-  font: 700 11px/1 system-ui, sans-serif;
+  width: 124px;
+  height: auto;
+  padding: 6px 8px;
+  border-radius: 14px;
+  background: #fff;
+  text-align: center;
+  animation: forgot-pop 0.22s ease-out;
+}
+.bubble-forgot::after { background: #fff; }
+.bubble .forgot {
+  position: relative;
+  z-index: 1;
+  font-weight: 700;
+  font-size: 13px;
+  line-height: 1.2;
+}
+@keyframes forgot-pop {
+  from { scale: 0.6; }
+  to { scale: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bubble.bubble-forgot { animation: none; }
+}
+
+/* the rules log: every rule that fires, as plain lines. A tool for checking the game, not part of it. */
+.rules-log {
+  position: fixed;
+  z-index: 3;
+  left: max(10px, env(safe-area-inset-left));
+  right: max(10px, env(safe-area-inset-right));
+  bottom: calc(max(10px, env(safe-area-inset-bottom)) + 56px);
+  max-height: 34vh;
+  overflow-y: auto;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  border: 2px solid var(--ink);
+  border-radius: 12px;
+  background: rgba(241, 238, 231, 0.95);
+  font-size: 12px;
+  line-height: 1.35;
+  overscroll-behavior: contain;
+}
+
+.rules-log h2 {
+  margin: 0 0 4px;
+  font: 400 15px/1.1 Anton, Impact, 'Arial Narrow', sans-serif;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.rules-log h2 small { font: 600 10px/1 system-ui, sans-serif; letter-spacing: 0.04em; color: #5d5a54; }
+.rules-log ol { margin: 0; padding: 0; list-style: none; }
+.rules-log li { padding: 3px 0; border-top: 1px solid rgba(7, 7, 7, 0.12); }
+.rules-log b { margin-right: 4px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+@media (min-width: 720px) {
+  .rules-log { right: auto; width: 440px; }
 }

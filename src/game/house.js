@@ -68,3 +68,14 @@ export const PROPS = [
 
 // Small things that sit on furniture: `up` is how high off the floor, in floors. They stand just in front of the furniture's card.
 export const SMALL = [{ id: 'bowl', at: [3.9, 3.9], img: 'cereal-bowl', size: 0.5, up: 1.45 }]
+
+// Where a kid can stand and wait in each room, as tile middles. Six per room, picked by hand: never on furniture,
+// never in a doorway or on the tile in front of one, and never on the hall runner, so the way through the house
+// stays open however the day's needs are dealt. The game hands them out at random each day (src/game/world.js).
+const mid = (tiles) => tiles.map(([x, y]) => [x + 0.5, y + 0.55])
+export const SPOTS = {
+  kitchen: mid([[4, 1], [6, 1], [2, 2], [1, 5], [5, 5], [6, 5]]),
+  bath: mid([[9, 1], [11, 1], [13, 2], [13, 4], [8, 5], [12, 5]]),
+  cubby: mid([[1, 7], [5, 7], [1, 9], [1, 11], [4, 11], [6, 11]]),
+  hall: mid([[8, 7], [8, 11], [13, 7], [13, 9], [13, 11], [12, 8]]),
+}

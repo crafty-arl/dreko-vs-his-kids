@@ -4,7 +4,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { TASK } from './config.js'
 import { Icon } from './Icon.jsx'
-import { MOVES, NEEDS } from './needs.js'
+import { MOVES, MOVE_NAMES, NEEDS } from './needs.js'
 import Hold, { how as holdHow } from './tasks/Hold.jsx'
 import Pieces, { how as piecesHow } from './tasks/Pieces.jsx'
 import Sides, { how as sidesHow } from './tasks/Sides.jsx'
@@ -17,12 +17,17 @@ const MOVE = {
   sides: [Sides, sidesHow],
 }
 
-export default function Task({ kid, needId = kid.needId, onDone, onClose }) {
+export default function Task({ kid, needId = kid.needId, onDone, onClose, onEvent }) {
   const spec = MOVES[needId] ?? MOVES.breakfast
   const [Move, how] = MOVE[spec.move]
   const [said, setSaid] = useState('')
   const [done, setDone] = useState(false)
   const win = useCallback(() => setDone(true), [])
+  // a task says something only on a miss; the rules log gets a line for each one
+  const say = useCallback((text) => {
+    setSaid(text)
+    if (text) onEvent?.(`Miss on ${kid.name}'s ${NEEDS[needId]} (${MOVE_NAMES[spec.move]}): "${text}" It costs time only.`)
+  }, [onEvent, kid.name, needId, spec.move])
 
   // the need is met: show the tick for a moment, then the kid walks off
   useEffect(() => {
@@ -48,7 +53,7 @@ export default function Task({ kid, needId = kid.needId, onDone, onClose }) {
         </div>
         <p className="task-say" role="status">{done ? 'Done.' : said || how(spec)}</p>
         <div className={`task-play ${done ? 'is-over' : ''}`}>
-          <Move spec={spec} onWin={win} setSay={setSaid} />
+          <Move spec={spec} onWin={win} setSay={say} />
         </div>
         <button type="button" className="close task-close" onClick={onClose}>Back</button>
       </div>

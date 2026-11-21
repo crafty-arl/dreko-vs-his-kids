@@ -32,8 +32,24 @@ export const MOVES = {
   shoes: { move: 'sides', steps: 4 },
 }
 
+// What each move is called on screen and in the rules log.
+export const MOVE_NAMES = { hold: 'Hold and let go', pieces: 'Pieces in place', trace: 'Trace the line', sides: 'Left and right' }
+
+// Where each need happens. A kid waits in the room of the need they have right now, so the day's deal also
+// spreads the kids over the house. The pairing is a draft: change a line here to move a need to another room.
+export const ROOMS = {
+  kitchen: ['breakfast', 'lunch'],
+  bath: ['teeth', 'braids'],
+  cubby: ['socks', 'jacket', 'homework'],
+  hall: ['slip', 'backpack', 'show', 'shoes'],
+}
+export const ROOM_OF = Object.fromEntries(Object.entries(ROOMS).flatMap(([room, ids]) => ids.map((id) => [id, room])))
+// How many needs one room can hold in a day: one for each standing spot in it (src/game/house.js, SPOTS).
+export const ROOM_CAP = 6
+
 // A new day: hand out `count` needs between the kids at random. Returns { kidName: [needId, ...] }.
-// Every kid gets one, no need twice. Past that, `count` minus the number of kids get a second, different one.
+// Every kid gets one, no need twice. Past that, `count` minus the number of kids get a second one, and that
+// second need is always in a different room from the kid's first, so they have to cross the house for it.
 // The week never deals fewer needs than kids, so every kid has something every day.
 export function dealDay(names, count, random = Math.random) {
   const mix = (list) => {
@@ -46,11 +62,17 @@ export function dealDay(names, count, random = Math.random) {
   }
   const ids = Object.keys(NEEDS)
   const out = Object.fromEntries(names.map((name) => [name, []]))
+  const full = {} // how many needs each room holds so far
+  const give = (name, id) => {
+    out[name].push(id)
+    full[ROOM_OF[id]] = (full[ROOM_OF[id]] ?? 0) + 1
+  }
   const pool = mix(ids)
-  mix(names).slice(0, count).forEach((name, i) => out[name].push(pool[i % pool.length]))
+  mix(names).slice(0, count).forEach((name, i) => give(name, pool[i % pool.length]))
   for (const name of mix(names).slice(0, Math.max(0, count - names.length))) {
-    const other = ids.filter((id) => id !== out[name][0])
-    out[name].push(other[Math.floor(random() * other.length)])
+    const first = ROOM_OF[out[name][0]]
+    const other = ids.filter((id) => ROOM_OF[id] !== first && (full[ROOM_OF[id]] ?? 0) < ROOM_CAP)
+    give(name, other[Math.floor(random() * other.length)])
   }
   return out
 }
