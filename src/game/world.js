@@ -196,11 +196,12 @@ export async function startGame(canvas, hooks = {}) {
   }
   function stepBus(dt) {
     // it drives along the road, and slows into its stop
+    // (it always lands exactly on `to`: a step that left it a hair short used to leave the scene waiting for ever)
     const gap = bus.to - bus.x
-    if (Math.abs(gap) > 1e-3) {
+    if (gap) {
       const pace = bus.to === BUS.at[0] ? Math.max(0.12, Math.min(1, Math.abs(gap) / 3)) : Math.min(1, 0.25 + Math.abs(bus.x - BUS.at[0]) / 3)
       const by = (BUS.speed * pace * dt) / 1000
-      bus.x = Math.abs(gap) <= by ? bus.to : bus.x + Math.sign(gap) * by
+      bus.x = Math.abs(gap) <= Math.max(by, 0.01) ? bus.to : bus.x + Math.sign(gap) * by
     }
     if (!bus.scene) return
     if (bus.scene === 'in') {
