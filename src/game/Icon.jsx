@@ -5,7 +5,7 @@ import { UI } from './config.js'
 const dot = { fill: 'currentColor', stroke: 'none' }
 
 const SHAPES = {
-  // the ten needs
+  // the needs
   lunch: (<><path d="M6 11l2-3 2 3 2-3 2 3 2-3 2 3v16H6z" /><path d="M10 17h4" /><circle cx="24" cy="22" r="4.5" /><path d="M24 17.500c0-1.500 1-2.500 2-3" /></>),
   slip: (<><path d="M7 4h12l6 6v18H7z" /><path d="M19 4v6h6" /><path d="M11 15h10M11 19h6" /><path d="M11 24c2-3 3 2 5-1s2 1 5 0" /></>),
   braids: (<><circle cx="16" cy="4" r="2" {...dot} /><path d="M16 6c-6 3-6 5 0 8s6 5 0 8-6 4 0 7" /><path d="M16 6c6 3 6 5 0 8s-6 5 0 8 6 4 0 7" /><path d="M12 29h8" /></>),
@@ -16,6 +16,7 @@ const SHAPES = {
   show: (<><path d="M16 4l3.200 7.200 7.800.800-5.900 5.200 1.800 7.700L16 20.800 9.100 24.900l1.800-7.700L5 12l7.800-.800z" /><path d="M5 28h22" /></>),
   breakfast: (<><path d="M4 15h24a12 12 0 0 1-24 0z" /><path d="M20 15l6-11" /><circle cx="10" cy="11" r="1.400" {...dot} /><circle cx="14.500" cy="9" r="1.400" {...dot} /><circle cx="16" cy="12.500" r="1.400" {...dot} /></>),
   backpack: (<><path d="M8 14a8 8 0 0 1 16 0v12a2 2 0 0 1-2 2H10a2 2 0 0 1-2-2z" /><path d="M13 6.500a3 3 0 0 1 6 0" /><path d="M11 19h10v6H11z" /><path d="M12 14h8" /></>),
+  shoes: (<><path d="M4 24V11c2 1.500 5 1 6-1l5 6c4 1.500 9 1 12 5v3z" /><path d="M3 27.500h25" /><path d="M11.500 14l-2.500 2.200M14.500 17l-2.500 2.200" /></>),
   // the overlay
   ask: (<><path d="M11 11.500c0-3.300 2.200-5.500 5.200-5.500 2.900 0 4.900 1.900 4.900 4.500 0 2.200-1.200 3.400-2.700 4.400-1.500 1-2.200 1.900-2.200 3.600" strokeWidth="3.600" /><circle cx="15.200" cy="25" r="2.300" {...dot} /></>),
   clock: (<><circle cx="16" cy="18" r="10" /><path d="M16 12v6l4 3" /><path d="M7 6L4 9M25 6l3 3" /></>),
@@ -26,7 +27,7 @@ const SHAPES = {
 }
 
 // Painted icons (pen and watercolour pictures in public/art/icons/). List a name here once its picture is in;
-// anything not listed falls back to the line shape above.
+// anything not listed falls back to the line shape above ('shoes' has no painted picture yet).
 const PAINTED = ['lunch', 'slip', 'braids', 'homework', 'socks', 'teeth', 'jacket', 'show', 'breakfast', 'backpack', 'ask', 'clock', 'bus', 'sweat', 'tick', 'stick']
 
 // wash: which colour sits behind an inked icon ('need', 'gold', 'red', 'green'), or nothing

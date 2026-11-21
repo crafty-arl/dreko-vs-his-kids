@@ -6,7 +6,7 @@ import { CAMERA, CLOCK, DREKO, GOLD, INK, PAPER, TILE, WALK } from './config.js'
 import { KIDS, kidArt } from './family.js'
 import { H, PROPS, ROWS, SMALL, W, placeName } from './house.js'
 import { createInput } from './input.js'
-import { ASK_DISTANCE } from './needs.js'
+import { ASK_DISTANCE, dealNeeds } from './needs.js'
 import { createWalker, poseOf, stepWalker } from './walk.js'
 
 // The walk grid: walls and furniture are solid, and so is the tile of every kid in `home` (a list of kids still
@@ -61,6 +61,9 @@ export async function startGame(canvas, hooks = {}) {
   // The morning: 'ready' until Dreko first moves, 'run' while the clock counts down, 'left' while the
   // "bus left" card is up. Then the morning starts over with everything he has learned still known.
   const clock = { phase: 'ready', loop: 1, total: CLOCK.firstLoop, left: CLOCK.firstLoop, card: 0, paused: false, told: -1, boarded: 0 }
+  // who needs what this game: dealt at random from the pool, and dealt again on a fresh game
+  let needs = dealNeeds(KIDS.map((k) => k.name))
+  hooks.onNeeds?.({ ...needs })
   let busy = false // true while a mini task is open: Dreko stands still, the clock keeps running
   let near = null
   const tellClock = (force) => {
@@ -98,7 +101,11 @@ export async function startGame(canvas, hooks = {}) {
     clock.left = clock.total
     clock.phase = fresh ? 'ready' : 'run'
     clock.boarded = 0
-    if (fresh) for (const name in known) delete known[name]
+    if (fresh) {
+      for (const name in known) delete known[name]
+      needs = dealNeeds(KIDS.map((k) => k.name))
+      hooks.onNeeds?.({ ...needs })
+    }
     for (const k of kids) {
       k.state = 'home'
       k.path = null
@@ -459,7 +466,7 @@ export async function startGame(canvas, hooks = {}) {
     },
     playAgain() { nextMorning(true) },
     // for tests and for the next systems (needs, clock): where things are right now
-    state: () => ({ dreko: dreko.at.slice(), place, moving: dreko.moving, known: Object.keys(known), clock: { phase: clock.phase, loop: clock.loop, left: clock.left, total: clock.total, boarded: clock.boarded }, near, kids: Object.fromEntries(kids.map((k) => [k.kid.name, k.state])) }),
+    state: () => ({ dreko: dreko.at.slice(), place, moving: dreko.moving, known: Object.keys(known), clock: { phase: clock.phase, loop: clock.loop, left: clock.left, total: clock.total, boarded: clock.boarded }, near, needs: { ...needs }, kids: Object.fromEntries(kids.map((k) => [k.kid.name, k.state])) }),
     stop() {
       stopped = true
       input.stop()

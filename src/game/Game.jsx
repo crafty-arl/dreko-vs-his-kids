@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { CLOCK } from './config.js'
 import { KIDS } from './family.js'
-import Overlay from './Overlay.jsx'
+import Overlay, { overlayClass } from './Overlay.jsx'
 import { createSound } from './sound.js'
 import Task from './Task.jsx'
 import { startGame } from './world.js'
@@ -16,6 +16,7 @@ export default function Game() {
   const soundRef = useRef(null)
   const [soundOn, setSoundOn] = useState(true)
   const [known, setKnown] = useState({})
+  const [needs, setNeeds] = useState({}) // who needs what this game: { kidName: needId }, dealt by the game
   const [ready, setReady] = useState({}) // kids whose need is met: 'walking' to the bus stop, or at the 'stop'
   const [near, setNear] = useState(null) // the kid Dreko is standing next to and can help
   const [task, setTask] = useState(null) // the kid whose mini task is open
@@ -63,7 +64,7 @@ export default function Game() {
       if (button === 'b') setListOpen(false)
     }
 
-    startGame(canvasRef.current, { onPlace: setPlace, onWalk: () => setWalked(true), onKnown: setKnown, onReady: setReady, onNear: setNear, onBubbles, onButton, onClock: setClock })
+    startGame(canvasRef.current, { onPlace: setPlace, onWalk: () => setWalked(true), onKnown: setKnown, onNeeds: setNeeds, onReady: setReady, onNear: setNear, onBubbles, onButton, onClock: setClock })
       .then((g) => {
         if (cancelled) return g.stop()
         game = g
@@ -161,6 +162,7 @@ export default function Game() {
       <Overlay
         place={place}
         known={known}
+        needs={needs}
         ready={ready}
         helping={!task && !listOpen && (clock.phase === 'run' || clock.phase === 'ready') ? KIDS.find((k) => k.name === near) : null}
         onHelp={openTask}
@@ -193,7 +195,11 @@ export default function Game() {
           </button>
         </div>
       </Overlay>
-      {task && <Task kid={KIDS.find((k) => k.name === task)} onDone={finishTask} onClose={closeTask} />}
+      {task && (
+        <div className={overlayClass}>
+          <Task kid={KIDS.find((k) => k.name === task)} needId={needs[task]} onDone={finishTask} onClose={closeTask} />
+        </div>
+      )}
       <canvas ref={mapRef} className="minimap" hidden={!showMap} aria-label="Tile map of the house" />
       {status === 'loading' && <p className="note">Waking the house up</p>}
       {status === 'error' && <p className="note">The house did not load. Reload the page to try again.</p>}

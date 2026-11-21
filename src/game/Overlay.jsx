@@ -5,13 +5,17 @@ import { KIDS } from './family.js'
 import { Icon, InkFilter } from './Icon.jsx'
 import { NEEDS } from './needs.js'
 
+// the classes that carry the overlay's colours and icon look; the mini task card wears them too
+export const overlayClass = `overlay look-${UI.icons === 'plain' ? 'plain' : 'inked'} ui-${UI.overlay}`
+
 const clockText = (seconds) => `${Math.floor(seconds / 60)}:${String(Math.ceil(seconds % 60)).padStart(2, '0')}`
 
-// known: { kidName: true } for every kid who has told Dreko their need. ready: { kidName: 'walking' | 'stop' }
+// known: { kidName: true } for every kid who has told Dreko their need. needs: { kidName: needId } for this game. ready: { kidName: 'walking' | 'stop' }
 // for kids whose need is met. helping: the kid Dreko can help right now, if any.
 // bubbleRefs: one ref per kid, in KIDS order; the game moves them every frame.
-export default function Overlay({ place, known, ready, helping, clock, worry, listOpen, onToggleList, onHelp, onPlayAgain, bubbleRefs, settings, children }) {
+export default function Overlay({ place, known, needs, ready, helping, clock, worry, listOpen, onToggleList, onHelp, onPlayAgain, bubbleRefs, settings, children }) {
   const over = clock.phase === 'left' || clock.phase === 'won'
+  const needOf = (kid) => needs[kid.name] ?? kid.needId
   // while the morning runs this counts who is standing at the stop; once the bus has gone, who got on
   const onBus = over ? clock.boarded : Object.values(ready).filter((s) => s === 'stop').length
   const earned = CLOCK.perKid * (clock.boarded || 0)
@@ -20,7 +24,7 @@ export default function Overlay({ place, known, ready, helping, clock, worry, li
   const hurry = clock.phase === 'run' && timeLeft <= CLOCK.hurry
   const art = import.meta.env.BASE_URL + 'art/'
   return (
-    <div className={`overlay look-${UI.icons === 'plain' ? 'plain' : 'inked'} ui-${UI.overlay}`}>
+    <div className={overlayClass}>
       <InkFilter />
 
       {/* a bubble over each kid: a question mark until Dreko walks up, then the need, then a tick */}
@@ -29,7 +33,7 @@ export default function Overlay({ place, known, ready, helping, clock, worry, li
           const state = ready[kid.name] ? 'ready' : known[kid.name] ? 'known' : 'ask'
           return (
             <div key={kid.name} ref={(el) => { bubbleRefs.current[i] = el }} className={`bubble bubble-${state}`}>
-              <Icon name={state === 'ready' ? 'tick' : state === 'known' ? kid.needId : 'ask'} wash={state === 'ready' ? 'green' : state === 'known' ? 'need' : undefined} />
+              <Icon name={state === 'ready' ? 'tick' : state === 'known' ? needOf(kid) : 'ask'} wash={state === 'ready' ? 'green' : state === 'known' ? 'need' : undefined} />
             </div>
           )
         })}
@@ -105,10 +109,10 @@ export default function Overlay({ place, known, ready, helping, clock, worry, li
                     <span className="face" style={{ backgroundImage: `url(${art}${kid.name.toLowerCase()}.webp)` }} />
                     <span className="who">
                       {kid.name}
-                      <em>{state === 'ask' ? 'Not asked yet' : NEEDS[kid.needId] + (ready[kid.name] === 'stop' ? ', at the bus stop' : state === 'ready' ? ', on the way' : '')}</em>
+                      <em>{state === 'ask' ? 'Not asked yet' : NEEDS[needOf(kid)] + (ready[kid.name] === 'stop' ? ', at the bus stop' : state === 'ready' ? ', on the way' : '')}</em>
                     </span>
                     <span className={`slot slot-${state}`}>
-                      <Icon name={state === 'ready' ? 'tick' : state === 'known' ? kid.needId : 'ask'} wash={state === 'known' ? 'need' : undefined} />
+                      <Icon name={state === 'ready' ? 'tick' : state === 'known' ? needOf(kid) : 'ask'} wash={state === 'known' ? 'need' : undefined} />
                     </span>
                   </li>
                 )

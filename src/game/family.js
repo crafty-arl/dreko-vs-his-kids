@@ -1,6 +1,6 @@
 // The family, from the game map Carl locked on Nov 13 and 14.
 // `spot` is where a kid waits, in tiles. `tall` is height next to Dreko (Dreko = 1).
-// `flip` mirrors the drawing so the kid faces the other way. `needId` is the kid's need in src/game/needs.js.
+// `flip` mirrors the drawing so the kid faces the other way. `needId` is the need the game map first gave the kid; the game now deals needs at random each new game (src/game/needs.js) and this is only the fallback.
 
 export const KIDS = [
   { name: 'Zhar', needId: 'lunch', age: 14, place: 'kitchen', spot: [2.5, 2.6], tall: 0.86, flip: false, need: 'a packed lunch', quirk: 'sulks in a cocoon' },

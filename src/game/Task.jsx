@@ -9,7 +9,7 @@ import { NEEDS } from './needs.js'
 
 const HOLD_KEYS = [' ', 'enter', 'e']
 
-export default function Task({ kid, onDone, onClose }) {
+export default function Task({ kid, needId = kid.needId, onDone, onClose }) {
   const fillRef = useRef(null)
   const holdRef = useRef(null)
   // everything the frame loop needs lives here, so the meter moves without React drawing again
@@ -110,11 +110,11 @@ export default function Task({ kid, onDone, onClose }) {
   }, [onDone, onClose])
 
   return (
-    <div className="list" role="dialog" aria-label={`Help ${kid.name}: ${NEEDS[kid.needId]}`}>
+    <div className="list" role="dialog" aria-label={`Help ${kid.name}: ${NEEDS[needId]}`}>
       <div className="panel panel-task">
-        <h2>{NEEDS[kid.needId]} <small>{kid.name}</small></h2>
+        <h2>{NEEDS[needId]} <small>{kid.name}</small></h2>
         <div className={`task-art ${done ? 'task-done' : ''}`}>
-          <Icon name={done ? 'tick' : kid.needId} wash={done ? 'green' : 'need'} />
+          <Icon name={done ? 'tick' : needId} wash={done ? 'green' : 'need'} />
         </div>
         <div className="meter" aria-hidden="true">
           <i ref={fillRef} />
