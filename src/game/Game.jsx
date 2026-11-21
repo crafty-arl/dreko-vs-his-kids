@@ -61,7 +61,10 @@ export default function Game() {
     const onButton = (button) => {
       if (button === 'a') openTask()
       if (button === 'y' && !now.current.task) setListOpen((v) => !v)
-      if (button === 'b') setListOpen(false)
+      if (button === 'b') {
+        setListOpen(false)
+        setTask(null)
+      }
     }
 
     startGame(canvasRef.current, { onPlace: setPlace, onWalk: () => setWalked(true), onKnown: setKnown, onNeeds: setNeeds, onReady: setReady, onNear: setNear, onBubbles, onButton, onClock: setClock })

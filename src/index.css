@@ -564,3 +564,155 @@ body,
 }
 
 .close.again { margin: 14px auto 0; }
+
+/* ---------- the four mini task moves ---------- */
+.task-play.is-over { pointer-events: none; opacity: 0.6; }
+.panel-task .task-art { width: 76px; height: 76px; margin-bottom: 8px; }
+.panel-task .task-art .icon,
+.panel-task .task-art .icon-painted { width: 56px; height: 56px; }
+.panel-task .task-say { margin: 6px 0 12px; }
+.panel-task .hold { margin-top: 12px; }
+
+.task-keys {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: 10px 0 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: #5d5a54;
+}
+
+.task-keys .key { width: 22px; height: 22px; font-size: 13px; }
+.key-stick-small { background: var(--ink); font-family: system-ui, sans-serif !important; font-size: 9px !important; letter-spacing: -1px; }
+.key-wide { width: auto; padding: 0 9px; border-radius: 999px; background: var(--ink); font-size: 14px; }
+
+/* task 2: pieces */
+.piece-now {
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 10px;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--ink);
+  border-radius: 14px;
+  background: var(--gold);
+}
+
+.spots {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+
+.spot {
+  flex: 1;
+  max-width: 76px;
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 2px dashed var(--ink);
+  border-radius: 14px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.spot-cursor { outline: 4px solid var(--gold); outline-offset: 2px; }
+.spot-full { border-style: solid; background: var(--done); color: #fff; }
+.spot-miss { animation: nope 0.3s; }
+
+.mark { width: 44px; height: 44px; fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linejoin: round; opacity: 0.45; }
+.mark.is-solid { fill: currentColor; opacity: 1; }
+.mark-num { font: 400 34px/1 Anton, Impact, 'Arial Narrow', sans-serif; opacity: 0.4; }
+.mark-num.is-solid { opacity: 1; }
+
+@keyframes nope {
+  25% { transform: translateX(-6px); }
+  75% { transform: translateX(6px); }
+}
+
+/* task 3: trace */
+.trace {
+  display: block;
+  width: 100%;
+  border: 2px solid var(--ink);
+  border-radius: 14px;
+  background: #fff;
+  touch-action: none;
+  cursor: crosshair;
+}
+
+.trace-line { fill: none; stroke: #b9b5ac; stroke-width: 3; stroke-dasharray: 2 8; stroke-linecap: round; }
+.trace-ink { fill: none; stroke: var(--ink); stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }
+.trace-dot { fill: #fff; stroke: var(--ink); stroke-width: 2; }
+.trace-dot.is-next { fill: var(--gold); }
+.trace-dot.is-passed { fill: var(--ink); }
+.trace-pen { fill: var(--need); stroke: #fff; stroke-width: 2; }
+
+/* task 4: left and right */
+.steps {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.step {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  background: #fff;
+  opacity: 0.45;
+}
+
+.step svg { width: 24px; height: 24px; fill: none; stroke: var(--ink); stroke-width: 3.5; stroke-linecap: round; stroke-linejoin: round; }
+.step-now { opacity: 1; background: var(--gold); transform: scale(1.15); }
+.step.is-done { opacity: 1; background: var(--done); border-color: var(--done); }
+.step.is-done svg { stroke: #fff; }
+.step-miss { animation: nope 0.3s; }
+
+.sides {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.side {
+  flex: 1;
+  min-height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 2px solid var(--ink);
+  border-radius: 18px;
+  background: var(--gold);
+  color: var(--ink);
+  font: 400 22px/1 Anton, Impact, 'Arial Narrow', sans-serif;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.side:active { transform: translateY(2px); filter: brightness(0.92); }
+
+@media (max-height: 520px) {
+  .panel-task .task-art { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spot-miss, .step-miss { animation: none; }
+}

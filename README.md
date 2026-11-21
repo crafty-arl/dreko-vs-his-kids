@@ -23,14 +23,19 @@ An entry for **Tiny Loop Jam 2026**. The jam window runs from Nov 20, 18:00 UTC 
 - The bus clock and the morning loop: the clock starts when Dreko first moves and runs down from 30 seconds. At zero the bus leaves, a card says so, and the morning starts over with Dreko back in the kitchen and every need he has learned still known. His anxiety climbs as the clock runs down. The clock waits while the need list is open.
 - The icon set: 16 painted icons in `public/art/icons/` (ten needs, the question mark, clock, bus, sweat drop, tick and stick). `src/game/Icon.jsx` also holds a hand-inked line version of each as a fallback.
 
-- The first mini task (`src/game/Task.jsx`): stand next to a kid and press A (or E, Space, or the gold **Help** button). One move so far, from the game map: hold, and let go on the gold line. Too soon or too far and you try again. The clock keeps running. **All ten needs use this one move for now, as a stand-in.**
+- The mini tasks (`src/game/Task.jsx` and `src/game/tasks/`): stand next to a kid and press A (or E, Space, or the gold **Help** button). Four moves cover every need, and `MOVES` in `src/game/needs.js` says which need uses which. A miss only costs time, and the clock keeps running. Each works on a controller, the keyboard and a touch screen.
+  - **Hold** (breakfast, teeth): hold A and let go on the gold line.
+  - **Pieces** (packed lunch, homework, show-and-tell): pieces come one at a time; pick the spot each belongs in and drop it.
+  - **Trace** (permission slip, backpack): move the pen along the dotted line through every dot.
+  - **Sides** (braids, socks, jacket, shoes): press left or right as each step lights up.
+  - The shapes, numbers and lines inside the tasks are stand-ins until each need has its own pictures.
 - Boarding: a kid whose need is met walks to the bus stop on the shared walk and waits there. When the clock hits zero the bus takes whoever is at the stop, and the next morning starts with 10 more seconds for each kid who made it. A kid who boarded is back in their room the next morning.
 - The win: all ten at the stop before the bus leaves. For now it is a card with words, and **Play again** starts a fresh game.
 
 - The need deal (`src/game/needs.js`): there are 11 needs for 10 kids, so every new game deals a different ten at random, one per kid. The deal stays the same through the looping mornings and changes on **Play again** or a reload. The 11th need, Shoes tied, has a line icon as a stand-in until it gets a painted one.
 - Sound (`src/game/sound.js`): `menu.mp3` loops through the whole game. On top of it, the tick-tock plays for the last 10 seconds before the bus, `Bus-lose.mp3` while the "bus left" card is up, and `Bus-win.mp3` on the win. The menu music fades out under those last two and comes back after. Nothing plays until the first tap or key, as browsers ask. The **Sound** button turns it off and on. `Dad-died.mp3` has no moment in the game yet.
 
-Not in yet: the other mini task moves (spin, rhythm, mash, trace), the bus, mom and the driver as pictures, the title and ending screens, drawn walking frames, kids placed in rooms by their need, and sound effects (steps, task done, kid boards).
+Not in yet: each need's own task pictures, the bus, mom and the driver as pictures, the title and ending screens, drawn walking frames, kids placed in rooms by their need, and sound effects (steps, task done, kid boards).
 
 ## Run it
 

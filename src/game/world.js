@@ -465,6 +465,11 @@ export async function startGame(canvas, hooks = {}) {
       tellReady()
     },
     playAgain() { nextMorning(true) },
+    // give kids a need by hand, for tests: { kidName: needId }
+    setNeeds(map) {
+      needs = { ...needs, ...map }
+      hooks.onNeeds?.({ ...needs })
+    },
     // for tests and for the next systems (needs, clock): where things are right now
     state: () => ({ dreko: dreko.at.slice(), place, moving: dreko.moving, known: Object.keys(known), clock: { phase: clock.phase, loop: clock.loop, left: clock.left, total: clock.total, boarded: clock.boarded }, near, needs: { ...needs }, kids: Object.fromEntries(kids.map((k) => [k.kid.name, k.state])) }),
     stop() {
