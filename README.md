@@ -27,7 +27,7 @@ An entry for **Tiny Loop Jam 2026**. The jam window runs from Nov 20, 18:00 UTC 
 - Boarding: a kid whose need is met walks to the bus stop on the shared walk and waits there. When the clock hits zero the bus takes whoever is at the stop, and the next morning starts with 10 more seconds for each kid who made it. A kid who boarded is back in their room the next morning.
 - The win: all ten at the stop before the bus leaves. For now it is a card with words, and **Play again** starts a fresh game.
 
-- Sound (`src/game/sound.js`): the tick-tock for the last 10 seconds before the bus, `Bus-lose.mp3` while the "bus left" card is up, and `Bus-win.mp3` on the win. Nothing plays until the first tap or key, as browsers ask. The **Sound** button turns it off and on. `menu.mp3` waits for a title screen and `Dad-died.mp3` has no moment in the game yet.
+- Sound (`src/game/sound.js`): `menu.mp3` loops through the whole game. On top of it, the tick-tock plays for the last 10 seconds before the bus, `Bus-lose.mp3` while the "bus left" card is up, and `Bus-win.mp3` on the win. The menu music fades out under those last two and comes back after. Nothing plays until the first tap or key, as browsers ask. The **Sound** button turns it off and on. `Dad-died.mp3` has no moment in the game yet.
 
 Not in yet: the other mini task moves (spin, rhythm, mash, trace), the bus, mom and the driver as pictures, the title and ending screens, drawn walking frames, the needs shuffle, and sound effects (steps, task done, kid boards).
 

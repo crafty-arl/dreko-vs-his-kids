@@ -105,14 +105,16 @@ export default function Game() {
     soundRef.current = sound
     window.__drekoSound = sound // for tests
     setSoundOn(!sound.muted)
+    sound.play('music', { loop: true }) // the menu music runs through the whole game, as Carl asked on Nov 21
     return () => {
       sound.end()
       soundRef.current = null
     }
   }, [])
 
-  // What plays when: the tick-tock for the last seconds before the bus (it waits while the need list is
-  // open, like the clock), the bus-left music while that card is up, and the win music on the win.
+  // What plays when, on top of the music: the tick-tock for the last seconds before the bus (it waits while
+  // the need list is open, like the clock), the bus-left music while that card is up, and the win music on
+  // the win. The menu music fades out under those two, as Carl asked on Nov 21, and comes back after.
   const hurry = clock.phase === 'run' && clock.left <= CLOCK.hurry && !listOpen
   useEffect(() => {
     const sound = soundRef.current
@@ -123,6 +125,7 @@ export default function Game() {
     else sound.stop('lose', 900)
     if (clock.phase === 'won') sound.play('win')
     else sound.stop('win')
+    sound.turn('music', clock.phase === 'left' || clock.phase === 'won' ? 0 : 1, clock.phase === 'left' || clock.phase === 'won' ? 500 : 1200)
   }, [hurry, clock.phase])
 
   // Dreko stands still while he helps a kid. The clock keeps running.
