@@ -1,6 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { CLOCK } from './config.js'
+import { KIDS } from './family.js'
 import Overlay from './Overlay.jsx'
+import Task from './Task.jsx'
 import { startGame } from './world.js'
 
 // The game screen: one canvas for the house, and the overlay on top.
@@ -11,8 +13,24 @@ export default function Game() {
   const gameRef = useRef(null)
   const bubbleRefs = useRef([])
   const [known, setKnown] = useState({})
+  const [ready, setReady] = useState({}) // kids whose need is met: 'walking' to the bus stop, or at the 'stop'
+  const [near, setNear] = useState(null) // the kid Dreko is standing next to and can help
+  const [task, setTask] = useState(null) // the kid whose mini task is open
   const [listOpen, setListOpen] = useState(false)
-  const [clock, setClock] = useState({ phase: 'ready', loop: 1, total: CLOCK.firstLoop, left: CLOCK.firstLoop })
+  const [clock, setClock] = useState({ phase: 'ready', loop: 1, total: CLOCK.firstLoop, left: CLOCK.firstLoop, boarded: 0 })
+  // the newest values, for the key and button handlers that are set up once
+  const now = useRef({})
+  now.current = { near, task, listOpen }
+  const openTask = useCallback(() => {
+    const s = now.current
+    if (s.near && !s.task && !s.listOpen) setTask(s.near)
+  }, [])
+  const closeTask = useCallback(() => setTask(null), [])
+  const finishTask = useCallback(() => {
+    const name = now.current.task
+    setTask(null)
+    if (name) gameRef.current?.markReady(name)
+  }, [])
   const [place, setPlace] = useState('')
   const [status, setStatus] = useState('loading')
   const [showMap, setShowMap] = useState(false)
@@ -37,11 +55,12 @@ export default function Game() {
       })
     }
     const onButton = (button) => {
-      if (button === 'y') setListOpen((v) => !v)
+      if (button === 'a') openTask()
+      if (button === 'y' && !now.current.task) setListOpen((v) => !v)
       if (button === 'b') setListOpen(false)
     }
 
-    startGame(canvasRef.current, { onPlace: setPlace, onWalk: () => setWalked(true), onKnown: setKnown, onBubbles, onButton, onClock: setClock })
+    startGame(canvasRef.current, { onPlace: setPlace, onWalk: () => setWalked(true), onKnown: setKnown, onReady: setReady, onNear: setNear, onBubbles, onButton, onClock: setClock })
       .then((g) => {
         if (cancelled) return g.stop()
         game = g
@@ -77,11 +96,27 @@ export default function Game() {
     gameRef.current?.setPaused(listOpen)
   }, [listOpen, status])
 
+  // Dreko stands still while he helps a kid. The clock keeps running.
+  useEffect(() => {
+    gameRef.current?.setBusy(!!task)
+  }, [task, status])
+
+  // the bus does not wait for a task: when it leaves, or the kid walks off, the task closes
+  useEffect(() => {
+    if (task && (clock.phase === 'left' || clock.phase === 'won' || ready[task])) setTask(null)
+  }, [task, clock.phase, ready])
+
   useEffect(() => {
     const anyKey = (e) => {
+      if (now.current.task) return // the mini task reads the keys while it is open
+      const key = e.key.toLowerCase()
       if (/^(arrow|[wasd]$)/i.test(e.key)) setWalked(true)
-      if (e.key.toLowerCase() === 'y') setListOpen((v) => !v)
-      if (e.key === 'Escape' || e.key.toLowerCase() === 'b') setListOpen(false)
+      if (key === 'y') setListOpen((v) => !v)
+      if (key === 'escape' || key === 'b') setListOpen(false)
+      if ((key === 'e' || key === ' ' || key === 'enter') && !e.repeat && now.current.near && !now.current.listOpen) {
+        e.preventDefault()
+        openTask()
+      }
     }
     window.addEventListener('keydown', anyKey)
     return () => window.removeEventListener('keydown', anyKey)
@@ -94,7 +129,10 @@ export default function Game() {
       <Overlay
         place={place}
         known={known}
-        ready={{}}
+        ready={ready}
+        helping={!task && !listOpen && (clock.phase === 'run' || clock.phase === 'ready') ? KIDS.find((k) => k.name === near) : null}
+        onHelp={openTask}
+        onPlayAgain={() => gameRef.current?.playAgain()}
         clock={clock}
         worry={(1 - clock.left / clock.total) * (1 - 0.05 * Object.keys(known).length)}
         listOpen={listOpen}
@@ -110,10 +148,11 @@ export default function Game() {
           </button>
         </div>
       </Overlay>
+      {task && <Task kid={KIDS.find((k) => k.name === task)} onDone={finishTask} onClose={closeTask} />}
       <canvas ref={mapRef} className="minimap" hidden={!showMap} aria-label="Tile map of the house" />
       {status === 'loading' && <p className="note">Waking the house up</p>}
       {status === 'error' && <p className="note">The house did not load. Reload the page to try again.</p>}
-      {status === 'ready' && !walked && <p className="note">Tap the floor, or use the stick or arrow keys, to walk Dreko</p>}
+      {status === 'ready' && !walked && !task && <p className="note">Tap the floor, or use the stick or arrow keys, to walk Dreko</p>}
     </div>
   )
 }

@@ -21,6 +21,10 @@ export const WALK = { stride: 0.4, bounce: 0.05, rock: 0.07, lean: 0.1, squash: 
 // `cardMs` is how long the "bus left" card stays up. `hurry` is when the clock turns red, in seconds.
 export const CLOCK = { firstLoop: 30, perKid: 10, cardMs: 3200, hurry: 10 }
 
+// The one mini task move so far: hold, and let go on the line. The meter fills in `fillMs`; letting go between
+// `from` and `to` (parts of the full meter) meets the need. `doneMs` is how long the tick shows. Draft numbers.
+export const TASK = { fillMs: 1500, from: 0.62, to: 0.84, doneMs: 500 }
+
 // The look of the screen overlay, as Carl picked on Nov 20: colour, with painted icons in the game's pen and
 // watercolour look.
 // icons: 'painted' (pictures from public/art/icons/, inked where one is missing), 'inked' (wobbly pen line

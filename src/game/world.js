@@ -9,19 +9,24 @@ import { createInput } from './input.js'
 import { ASK_DISTANCE } from './needs.js'
 import { createWalker, poseOf, stepWalker } from './walk.js'
 
-// The walk grid: walls, furniture and waiting kids are solid.
-function walkGrid() {
+// The walk grid: walls and furniture are solid, and so is the tile of every kid in `home` (a list of kids still
+// waiting in their rooms). A kid who has left for the bus no longer blocks the way.
+function walkGrid(home = KIDS) {
   const rows = ROWS.map((r) => r.split(''))
   for (const p of PROPS) rows[p.at[1]][p.at[0]] = '#'
-  for (const k of KIDS) rows[Math.floor(k.spot[1])][Math.floor(k.spot[0])] = '#'
+  for (const k of home) rows[Math.floor(k.spot[1])][Math.floor(k.spot[0])] = '#'
   return { x0: 0, y0: 0, t: TILE, rows: rows.map((r) => r.join('')) }
 }
+
+// Where each kid waits for the bus: a line along the pavement, in the order of the family list.
+const stopSpot = (i) => [2.5 + i, 13.6]
 
 export async function startGame(canvas, hooks = {}) {
   const img = await loadArt()
   const view = GMThree.create(THREE, canvas, { smooth: true, upright: true })
   view.build(buildHouse(img, INK))
-  const walk = walkGrid()
+  let walk = walkGrid()
+  const openGrid = walkGrid([]) // the house with no kids in the way, for a kid finding the way to the bus
   const input = createInput()
 
   // cut-outs, made once
@@ -45,6 +50,8 @@ export async function startGame(canvas, hooks = {}) {
       art: { front: cutout(img[kidArt(k)]), 'front-flip': cutout(img[kidArt(k)], true) },
       walker: createWalker({ height: size, quick: WALK.kidsQuick, floats: !!k.floats, look, offset: i * 370 }),
       pace: null,
+      // 'home' in their room, 'walking' to the bus stop once their need is met, 'stop' when they are waiting there
+      state: 'home', path: null, len: 0, gone: 0, go: 0, slot: i,
     }
   })
 
@@ -53,26 +60,56 @@ export async function startGame(canvas, hooks = {}) {
   let walkTest = false
   // The morning: 'ready' until Dreko first moves, 'run' while the clock counts down, 'left' while the
   // "bus left" card is up. Then the morning starts over with everything he has learned still known.
-  const clock = { phase: 'ready', loop: 1, total: CLOCK.firstLoop, left: CLOCK.firstLoop, card: 0, paused: false, told: -1 }
+  const clock = { phase: 'ready', loop: 1, total: CLOCK.firstLoop, left: CLOCK.firstLoop, card: 0, paused: false, told: -1, boarded: 0 }
+  let busy = false // true while a mini task is open: Dreko stands still, the clock keeps running
+  let near = null
   const tellClock = (force) => {
     const tick = Math.ceil(clock.left * 10)
     if (!force && tick === clock.told) return
     clock.told = tick
-    hooks.onClock?.({ phase: clock.phase, loop: clock.loop, total: clock.total, left: clock.left })
+    hooks.onClock?.({ phase: clock.phase, loop: clock.loop, total: clock.total, left: clock.left, boarded: clock.boarded })
   }
+  const tellReady = () => {
+    const out = {}
+    for (const k of kids) if (k.state !== 'home') out[k.kid.name] = k.state
+    hooks.onReady?.(out)
+  }
+  const atStop = () => kids.filter((k) => k.state === 'stop').length
+  // the bus takes whoever is standing at the stop
   function busLeaves() {
+    clock.boarded = atStop()
     clock.left = 0
     clock.phase = 'left'
     clock.card = CLOCK.cardMs
     dreko.path = null
     tellClock(true)
   }
-  function nextMorning() {
-    clock.loop += 1
-    // every kid who made the bus buys the next morning more time (no kid can board yet, so this is the same 30)
-    clock.total = CLOCK.firstLoop
+  // every kid at the stop: the morning is won
+  function allAboard() {
+    clock.boarded = kids.length
+    clock.phase = 'won'
+    dreko.path = null
+    tellClock(true)
+  }
+  function nextMorning(fresh) {
+    clock.loop = fresh ? 1 : clock.loop + 1
+    // every kid who made the bus buys the next morning more time
+    clock.total = CLOCK.firstLoop + (fresh ? 0 : CLOCK.perKid * clock.boarded)
     clock.left = clock.total
-    clock.phase = 'run'
+    clock.phase = fresh ? 'ready' : 'run'
+    clock.boarded = 0
+    if (fresh) for (const name in known) delete known[name]
+    for (const k of kids) {
+      k.state = 'home'
+      k.path = null
+      k.at = k.kid.spot.slice()
+      k.look = k.kid.flip ? 'front-flip' : 'front'
+    }
+    walk = walkGrid()
+    near = null
+    hooks.onNear?.(null)
+    hooks.onKnown?.({ ...known })
+    tellReady()
     dreko.at = DREKO.start.slice()
     dreko.path = null
     dreko.face = 'front'
@@ -109,6 +146,11 @@ export async function startGame(canvas, hooks = {}) {
 
   function step(dt) {
     let [ix, iy] = input.read()
+    if (busy || clock.phase === 'won') {
+      ix = 0
+      iy = 0
+      dreko.path = null
+    }
     if (clock.phase === 'left') {
       // the bus has gone: Dreko stands still while the card is up, then the morning starts over
       ix = 0
@@ -121,9 +163,10 @@ export async function startGame(canvas, hooks = {}) {
         clock.phase = 'run'
         tellClock(true)
       }
-    } else if (!clock.paused) {
+    } else if (clock.phase === 'run' && !clock.paused) {
       clock.left -= dt / 1000
-      if (clock.left <= 0) busLeaves()
+      if (atStop() === kids.length) allAboard()
+      else if (clock.left <= 0) busLeaves()
       else tellClock()
     }
     const from = dreko.at
@@ -177,6 +220,23 @@ export async function startGame(canvas, hooks = {}) {
     }
     if (learned) hooks.onKnown?.({ ...known })
 
+    // the kid Dreko can help right now: the nearest one within reach who is still in their room
+    let who = null
+    let best = ASK_DISTANCE
+    if (clock.phase === 'run' || clock.phase === 'ready') {
+      for (const k of kids) {
+        const d = Math.hypot(k.at[0] - dreko.at[0], k.at[1] - dreko.at[1])
+        if (k.state === 'home' && d < best) {
+          best = d
+          who = k.kid.name
+        }
+      }
+    }
+    if (who !== near) {
+      near = who
+      hooks.onNear?.(near)
+    }
+
     // the camera slides after him and never leaves the map
     const ease = 1 - Math.exp(-dt / 220)
     const tx = Math.max(2.5, Math.min(W - 2.5, dreko.at[0]))
@@ -206,7 +266,31 @@ export async function startGame(canvas, hooks = {}) {
   function stepKid(k, dt) {
     let moved = 0
     let side = 0
-    if (walkTest) {
+    if (k.state === 'walking') {
+      // off to the bus stop, on the same walk as everyone else
+      k.go = Math.min(1, k.go + dt / WALK.easeMs)
+      const left = (k.len - k.gone) / TILE
+      k.gone += (WALK.kidSpeed * k.go * Math.max(0.3, Math.min(1, left / 0.3)) * dt * TILE) / 1000
+      const f = Math.min(1, k.gone / k.len)
+      const p = GMTiles.along(k.path, f)
+      const next = [p[0] / TILE, p[1] / TILE]
+      const dx = next[0] - k.at[0]
+      const dy = next[1] - k.at[1]
+      moved = Math.hypot(dx, dy)
+      if (moved > 1e-6) {
+        side = (dx - dy) / Math.SQRT2 / moved
+        if (Math.abs(dx - dy) > 1e-4) k.look = dx - dy < 0 ? 'front-flip' : 'front'
+      }
+      k.at = next
+      if (f >= 1) {
+        k.state = 'stop'
+        k.path = null
+        k.look = 'front'
+        tellReady()
+      }
+    } else if (k.state === 'stop') {
+      // waiting for the bus
+    } else if (walkTest) {
       const p = k.pace || (k.pace = paceFor(k))
       if (p.wait > 0) {
         p.wait -= dt
@@ -294,9 +378,9 @@ export async function startGame(canvas, hooks = {}) {
     for (let x = 0; x <= W; x++) { g.moveTo(x * s + 0.5, 0); g.lineTo(x * s + 0.5, H * s) }
     for (let y = 0; y <= H; y++) { g.moveTo(0, y * s + 0.5); g.lineTo(W * s, y * s + 0.5) }
     g.stroke()
-    for (const k of KIDS) {
-      g.fillStyle = '#8f5fd0'
-      g.beginPath(); g.arc(k.spot[0] * s, k.spot[1] * s, s * 0.32, 0, 7); g.fill()
+    for (const k of kids) {
+      g.fillStyle = k.state === 'home' ? '#8f5fd0' : '#2e8b57'
+      g.beginPath(); g.arc(k.at[0] * s, k.at[1] * s, s * 0.32, 0, 7); g.fill()
     }
     if (dreko.path) {
       g.strokeStyle = GOLD
@@ -356,8 +440,26 @@ export async function startGame(canvas, hooks = {}) {
     setMapCanvas(c) { mapCanvas = c },
     setWalkTest(on) { walkTest = !!on },
     setPaused(on) { clock.paused = !!on },
+    setBusy(on) { busy = !!on },
+    // a kid's need is met: they head for the bus stop on their own
+    markReady(name) {
+      const k = kids.find((x) => x.kid.name === name)
+      if (!k || k.state !== 'home') return
+      const to = stopSpot(k.slot)
+      const path = GMTiles.findPath(openGrid, [k.at[0] * TILE, k.at[1] * TILE], [to[0] * TILE, to[1] * TILE])
+      if (!path || path.length < 2) return
+      k.state = 'walking'
+      k.path = path
+      k.len = GMTiles.pathLength(path)
+      k.gone = 0
+      k.go = 0
+      k.pace = null
+      walk = walkGrid(kids.filter((x) => x.state === 'home').map((x) => x.kid))
+      tellReady()
+    },
+    playAgain() { nextMorning(true) },
     // for tests and for the next systems (needs, clock): where things are right now
-    state: () => ({ dreko: dreko.at.slice(), place, moving: dreko.moving, known: Object.keys(known), clock: { phase: clock.phase, loop: clock.loop, left: clock.left } }),
+    state: () => ({ dreko: dreko.at.slice(), place, moving: dreko.moving, known: Object.keys(known), clock: { phase: clock.phase, loop: clock.loop, left: clock.left, total: clock.total, boarded: clock.boarded }, near, kids: Object.fromEntries(kids.map((k) => [k.kid.name, k.state])) }),
     stop() {
       stopped = true
       input.stop()

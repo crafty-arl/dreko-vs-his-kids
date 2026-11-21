@@ -23,7 +23,11 @@ An entry for **Tiny Loop Jam 2026**. The jam window runs from Nov 20, 18:00 UTC 
 - The bus clock and the morning loop: the clock starts when Dreko first moves and runs down from 30 seconds. At zero the bus leaves, a card says so, and the morning starts over with Dreko back in the kitchen and every need he has learned still known. His anxiety climbs as the clock runs down. The clock waits while the need list is open.
 - The icon set: 16 painted icons in `public/art/icons/` (ten needs, the question mark, clock, bus, sweat drop, tick and stick). `src/game/Icon.jsx` also holds a hand-inked line version of each as a fallback.
 
-Not in yet: the mini tasks (so no kid can get ready or board yet), the bus, mom and the driver, drawn walking frames, the needs shuffle, and sound.
+- The first mini task (`src/game/Task.jsx`): stand next to a kid and press A (or E, Space, or the gold **Help** button). One move so far, from the game map: hold, and let go on the gold line. Too soon or too far and you try again. The clock keeps running. **All ten needs use this one move for now, as a stand-in.**
+- Boarding: a kid whose need is met walks to the bus stop on the shared walk and waits there. When the clock hits zero the bus takes whoever is at the stop, and the next morning starts with 10 more seconds for each kid who made it. A kid who boarded is back in their room the next morning.
+- The win: all ten at the stop before the bus leaves. For now it is a card with words, and **Play again** starts a fresh game.
+
+Not in yet: the other mini task moves (spin, rhythm, mash, trace), the bus, mom and the driver as pictures, the ending screen, drawn walking frames, the needs shuffle, and sound.
 
 ## Run it
 
