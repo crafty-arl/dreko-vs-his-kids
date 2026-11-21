@@ -40,9 +40,11 @@ export const ROAM = { fromDay: 3, where: 'room', speed: 1.5, restMs: [300, 1100]
 // `speed` tiles a second, `size` its drawn height in tiles. `comeAt`: it pulls up when this many seconds are left.
 // `boardMs`: the pause between two kids getting on. `nodMs`: how long the driver's nod takes.
 // `driver` is where his head sits on the bus picture: across from its middle and up from the road, in tiles.
-// `mom` is her spot on the far pavement. `cam` is where the camera looks while the bus scene plays.
+// `mom` is where she stands to watch the bus scene. `cam` is where the camera looks while it plays.
+// `pace`: Mom paces the far pavement between the x of `from` and `to` at `speed` tiles a second, and stops for
+// `restMs` to look at the house (Carl, Nov 21: "mom pacing the streets and trying to look into the house").
 // Every number is a draft, and the three pictures are grey stand-ins until the real ones are in public/art/.
-export const BUS = { at: [6.5, 15.9], from: -7, to: 24, speed: 9, size: 2.7, comeAt: 10, boardMs: 170, nodMs: 1100, driver: [1.55, 1.25], driverSize: 0.95, mom: [9.6, 17.7], momSize: 1.9, cam: [6.9, 15.5] }
+export const BUS = { at: [6.5, 15.9], from: -7, to: 24, speed: 9, size: 2.7, comeAt: 10, boardMs: 170, nodMs: 1100, driver: [1.55, 1.25], driverSize: 0.95, mom: [9.6, 17.7], momSize: 1.9, pace: { from: 2.5, to: 12.5, speed: 1.3, restMs: [900, 1900] }, cam: [6.9, 15.5] }
 
 // Every mini task: `doneMs` is how long the tick shows before the kid walks off. Each need's own task
 // settings are in src/game/needs.js (MOVES).

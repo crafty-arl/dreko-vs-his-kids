@@ -78,7 +78,10 @@ export async function startGame(canvas, hooks = {}) {
   // the bus, its driver and Mom: three cards, real pictures when they exist and grey stand-ins until then
   const [busImg, busWide] = card(img.bus)
   const [driverImg, driverWide] = card(img.driver)
-  const [momImg, momWide] = card(img.mom)
+  // Mom has a front and a back picture like Dreko, and walks on the same shared walk
+  const momArt = { front: cutout(img.mom), 'front-flip': cutout(img.mom, true), back: cutout(img['mom-back']), 'back-flip': cutout(img['mom-back'], true) }
+  const mom = { at: BUS.mom.slice(), to: BUS.mom[0], dir: 1, rest: 1200, tip: 0, look: 'back' }
+  const momWalk = createWalker({ height: BUS.momSize, look: 'back' })
   // `x` is where the bus is along the road and `to` where it is heading. `scene` is the part of the bus scene
   // that is playing once the morning is over: 'in' (it pulls up), 'board' (kids get on one by one), 'nod'
   // (the driver nods, only when all ten are on) and 'out' (it drives off). `line` is who is still to get on.
@@ -223,6 +226,35 @@ export async function startGame(canvas, hooks = {}) {
       bus.scene = null
       tellClock(true)
     }
+  }
+  // Mom paces the far pavement. We see her front as she walks one way and her back as she walks the other;
+  // when she stops she turns to the house and goes up on her toes for a look. Once the morning is over she
+  // comes to her spot and watches the bus.
+  function stepMom(dt) {
+    const over = clock.phase === 'left' || clock.phase === 'dayWon' || clock.phase === 'won'
+    if (over) mom.to = BUS.mom[0]
+    const gap = mom.to - mom.at[0]
+    let moved = 0
+    let side = 0
+    if (Math.abs(gap) > 0.02) {
+      moved = Math.min(Math.abs(gap), (BUS.pace.speed * (over ? 2 : 1) * dt) / 1000)
+      mom.at = [mom.at[0] + Math.sign(gap) * moved, mom.at[1]]
+      side = Math.sign(gap) * Math.SQRT1_2
+      mom.look = gap > 0 ? 'front' : 'back-flip'
+      mom.tip = 0
+    } else {
+      mom.look = 'back'
+      mom.tip += dt
+      mom.rest -= dt
+      if (mom.rest <= 0 && !over) {
+        const { from, to, restMs } = BUS.pace
+        if (mom.at[0] >= to - 0.1) mom.dir = -1
+        if (mom.at[0] <= from + 0.1) mom.dir = 1
+        mom.to = Math.max(from, Math.min(to, mom.at[0] + mom.dir * (2 + Math.random() * 2.5)))
+        mom.rest = restMs[0] + Math.random() * (restMs[1] - restMs[0])
+      }
+    }
+    stepWalker(momWalk, dt, { moved, side, look: mom.look })
   }
   function driveOff() {
     bus.scene = 'out'
@@ -392,6 +424,7 @@ export async function startGame(canvas, hooks = {}) {
       else tellClock()
     }
     stepBus(dt)
+    stepMom(dt)
     const from = dreko.at
     let side = 0
     dreko.moving = false
@@ -602,7 +635,7 @@ export async function startGame(canvas, hooks = {}) {
     const things = [
       ...still,
       ...kids.filter((k) => k.state !== 'aboard').map((k) => posed(k.kid.name, k.at, k.art, k.size, k.walker, k.kid.floats ? 0.3 + 0.05 * Math.sin(now / 500) : 0)),
-      { id: 'mom', at: BUS.mom, level: 0, img: momImg, size: BUS.momSize, wide: momWide },
+      posed('mom', mom.at, momArt, BUS.momSize, momWalk, 0.09 * Math.sin(Math.min(1, mom.tip / 900) * Math.PI)),
       { id: 'bus', at: [bus.x, BUS.at[1]], level: 0, img: busImg, size: BUS.size, wide: busWide },
       // the driver sits a hair in front of the bus picture, at its window; his nod is two dips of the head
       { id: 'driver', at: [bus.x + BUS.driver[0] * Math.SQRT1_2 + 0.04, BUS.at[1] - BUS.driver[0] * Math.SQRT1_2 + 0.04], level: BUS.driver[1] - 0.12 * nod, img: driverImg, size: BUS.driverSize, wide: driverWide, roll: -0.22 * nod },
@@ -787,7 +820,7 @@ export async function startGame(canvas, hooks = {}) {
       nextMorning('day')
     },
     // for tests and for the next systems (needs, clock): where things are right now
-    state: () => ({ bus: { x: bus.x, scene: bus.scene }, dreko: dreko.at.slice(), place, moving: dreko.moving, known: Object.keys(known), told: { ...known }, rooms: Object.fromEntries(kids.map((k) => [k.kid.name, needs[k.kid.name].length ? ROOM_OF[needs[k.kid.name][0]] : null])), spots: Object.fromEntries(kids.map((k) => [k.kid.name, k.spot.slice()])), plan: JSON.parse(JSON.stringify(spots)), deal: copy(deal), solid: kids.filter((k) => k.state === 'home' && k.solid).map((k) => k.kid.name), at: Object.fromEntries(kids.map((k) => [k.kid.name, k.at.slice()])), clock: { phase: clock.phase, day: clock.day, loop: clock.loop, left: clock.left, total: clock.total, boarded: clock.boarded, earned: clock.earned }, near, needs: copy(needs), kids: Object.fromEntries(kids.map((k) => [k.kid.name, k.state])) }),
+    state: () => ({ bus: { x: bus.x, scene: bus.scene }, mom: { at: mom.at.slice(), look: mom.look }, dreko: dreko.at.slice(), place, moving: dreko.moving, known: Object.keys(known), told: { ...known }, rooms: Object.fromEntries(kids.map((k) => [k.kid.name, needs[k.kid.name].length ? ROOM_OF[needs[k.kid.name][0]] : null])), spots: Object.fromEntries(kids.map((k) => [k.kid.name, k.spot.slice()])), plan: JSON.parse(JSON.stringify(spots)), deal: copy(deal), solid: kids.filter((k) => k.state === 'home' && k.solid).map((k) => k.kid.name), at: Object.fromEntries(kids.map((k) => [k.kid.name, k.at.slice()])), clock: { phase: clock.phase, day: clock.day, loop: clock.loop, left: clock.left, total: clock.total, boarded: clock.boarded, earned: clock.earned }, near, needs: copy(needs), kids: Object.fromEntries(kids.map((k) => [k.kid.name, k.state])) }),
     stop() {
       stopped = true
       input.stop()
