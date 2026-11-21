@@ -13,7 +13,7 @@ const clockText = (seconds) => `${Math.floor(seconds / 60)}:${String(Math.ceil(s
 
 // known: { kidName: n }, how many of the needs a kid still has that Dreko has been told. needs: { kidName:
 // [needId, ...] }, what each kid still needs today (an empty list is a kid with nothing to do). ready:
-// { kidName: 'walking' | 'forgot' | 'back' | 'stop' } for kids who are not waiting in a room: on the way to the
+// { kidName: 'walking' | 'forgot' | 'back' | 'stop' | 'aboard' } for kids who are not waiting in a room: on the way to the
 // bus, at the stop remembering one more need, on the way back in, or waiting for the bus.
 // helping: the kid Dreko can help right now, if any.
 // bubbleRefs: one ref per kid, in KIDS order; the game moves them every frame.
@@ -28,7 +28,7 @@ export default function Overlay({ place, known, needs, ready, helping, clock, wo
   const stateOf = (kid) => {
     const s = ready[kid.name]
     if (s === 'forgot') return 'forgot'
-    if (s === 'walking' || s === 'stop' || !left(kid).length) return 'ready'
+    if (s === 'walking' || s === 'stop' || s === 'aboard' || !left(kid).length) return 'ready'
     return told(kid) > 0 ? 'known' : 'ask'
   }
   const iconOf = (state, kid) => (state === 'ready' ? 'tick' : state === 'known' ? needOf(kid) : 'ask')
@@ -95,7 +95,7 @@ export default function Overlay({ place, known, needs, ready, helping, clock, wo
         </button>
       </footer>
 
-      {clock.phase === 'left' && (
+      {clock.phase === 'left' && !clock.scene && (
         <div className="list" role="status">
           <div className="panel panel-bus">
             <h2>The bus left</h2>
@@ -107,7 +107,7 @@ export default function Overlay({ place, known, needs, ready, helping, clock, wo
       )}
 
       {/* a day done: all ten boarded, and the next day is harder */}
-      {clock.phase === 'dayWon' && (
+      {clock.phase === 'dayWon' && !clock.scene && (
         <div className="list" role="status">
           <div className="panel panel-bus">
             <h2>{day} done</h2>
@@ -118,7 +118,7 @@ export default function Overlay({ place, known, needs, ready, helping, clock, wo
       )}
 
       {/* the win. The words are a stand-in for the ending from the game map: the driver nods, mom is watching. */}
-      {clock.phase === 'won' && (
+      {clock.phase === 'won' && !clock.scene && (
         <div className="list" role="status">
           <div className="panel panel-bus">
             <h2>The week is done</h2>
@@ -138,7 +138,8 @@ export default function Overlay({ place, known, needs, ready, helping, clock, wo
               {KIDS.map((kid) => {
                 const state = stateOf(kid)
                 const s = ready[kid.name]
-                const words = s === 'stop' ? 'At the bus stop'
+                const words = s === 'aboard' ? 'On the bus'
+                  : s === 'stop' ? 'At the bus stop'
                   : s === 'forgot' ? 'Forgot something!'
                   : s === 'walking' ? 'On the way to the bus'
                   : !left(kid).length ? 'Ready to go'

@@ -1,10 +1,10 @@
 // Runs the house: builds it once from the tile map, then every frame moves Dreko, slides the camera and draws.
 import * as THREE from 'three'
 import { GMThree, GMTiles } from '../engine/index.js'
-import { buildHouse, cutout, loadArt } from './art.js'
-import { CAMERA, CLOCK, DREKO, GOLD, INK, PAPER, ROAM, TILE, WALK, WEEK } from './config.js'
+import { buildHouse, card, cutout, loadArt } from './art.js'
+import { BUS, CAMERA, CLOCK, DREKO, GOLD, INK, PAPER, ROAM, TILE, WALK, WEEK } from './config.js'
 import { KIDS, kidArt } from './family.js'
-import { H, PLACES, PROPS, ROWS, SMALL, SPOTS, W, floorTiles, placeName } from './house.js'
+import { H, PLACES, PROPS, ROAD_Y, ROWS, SMALL, SPOTS, W, floorTiles, placeName } from './house.js'
 import { createInput } from './input.js'
 import { ASK_DISTANCE, MOVES, MOVE_NAMES, NEEDS, ROOM_OF, dealDay } from './needs.js'
 import { createWalker, poseOf, stepWalker } from './walk.js'
@@ -12,7 +12,7 @@ import { createWalker, poseOf, stepWalker } from './walk.js'
 // The walk grid: walls and furniture are solid, and so is every tile in `spots` (where a kid stands waiting in a
 // room right now). A kid who has left for the bus no longer blocks the way.
 function walkGrid(spots = []) {
-  const rows = ROWS.map((r) => r.split(''))
+  const rows = ROWS.map((r, y) => (y >= ROAD_Y ? r.replace(/./g, '#') : r).split('')) // the road is for the bus
   for (const p of PROPS) rows[p.at[1]][p.at[0]] = '#'
   for (const s of spots) rows[Math.floor(s[1])][Math.floor(s[0])] = '#'
   return { x0: 0, y0: 0, t: TILE, rows: rows.map((r) => r.join('')) }
@@ -75,6 +75,14 @@ export async function startGame(canvas, hooks = {}) {
     }
   })
 
+  // the bus, its driver and Mom: three cards, real pictures when they exist and grey stand-ins until then
+  const [busImg, busWide] = card(img.bus)
+  const [driverImg, driverWide] = card(img.driver)
+  const [momImg, momWide] = card(img.mom)
+  // `x` is where the bus is along the road and `to` where it is heading. `scene` is the part of the bus scene
+  // that is playing once the morning is over: 'in' (it pulls up), 'board' (kids get on one by one), 'nod'
+  // (the driver nods, only when all ten are on) and 'out' (it drives off). `line` is who is still to get on.
+  const bus = { x: BUS.from, to: BUS.from, scene: null, t: 0, line: [] }
   const dreko = { at: DREKO.start.slice(), path: null, len: 0, gone: 0, go: 0, face: 'front', flip: false, moving: false }
   const drekoWalk = createWalker({ height: DREKO.height })
   let walkTest = false
@@ -132,7 +140,7 @@ export async function startGame(canvas, hooks = {}) {
     const tick = Math.ceil(clock.left * 10)
     if (!force && tick === clock.told) return
     clock.told = tick
-    hooks.onClock?.({ phase: clock.phase, day: clock.day, loop: clock.loop, total: clock.total, left: clock.left, boarded: clock.boarded, earned: clock.earned })
+    hooks.onClock?.({ phase: clock.phase, day: clock.day, loop: clock.loop, total: clock.total, left: clock.left, boarded: clock.boarded, earned: clock.earned, scene: !!bus.scene })
   }
   const tellReady = () => {
     const out = {}
@@ -149,6 +157,7 @@ export async function startGame(canvas, hooks = {}) {
     clock.phase = 'left'
     clock.card = CLOCK.cardMs
     dreko.path = null
+    busScene()
     tellClock(true)
   }
   // every kid counted: the day is won, and after Friday so is the week
@@ -158,7 +167,67 @@ export async function startGame(canvas, hooks = {}) {
     say(`All ten are counted with ${clock.left.toFixed(1)} seconds to spare. ${WEEK.days[clock.day]} is done${clock.phase === 'won' ? ', and so is the week' : `. Next is ${WEEK.days[clock.day + 1]}`}.`)
     clock.card = CLOCK.dayCardMs
     dreko.path = null
+    busScene()
     tellClock(true)
+  }
+  // The morning is over: the bus scene starts. Every counted kid is at the stop for it (one who was still on
+  // the walk there is put in their place), the bus pulls up if it has not yet, and the kids get on.
+  function busScene() {
+    for (const k of kids) {
+      if (!needs[k.kid.name].length && k.state !== 'stop') {
+        k.at = stopSpot(k.slot)
+        k.state = 'stop'
+        k.path = null
+        k.look = 'front'
+      }
+    }
+    fence()
+    tellReady()
+    bus.to = BUS.at[0]
+    bus.scene = 'in'
+  }
+  function stepBus(dt) {
+    // it drives along the road, and slows into its stop
+    const gap = bus.to - bus.x
+    if (Math.abs(gap) > 1e-3) {
+      const pace = bus.to === BUS.at[0] ? Math.max(0.12, Math.min(1, Math.abs(gap) / 3)) : Math.min(1, 0.25 + Math.abs(bus.x - BUS.at[0]) / 3)
+      const by = (BUS.speed * pace * dt) / 1000
+      bus.x = Math.abs(gap) <= by ? bus.to : bus.x + Math.sign(gap) * by
+    }
+    if (!bus.scene) return
+    if (bus.scene === 'in') {
+      if (bus.x !== BUS.at[0]) return
+      bus.line = kids.filter((k) => k.state === 'stop')
+      bus.scene = 'board'
+      bus.t = BUS.boardMs
+    } else if (bus.scene === 'board') {
+      bus.t -= dt
+      if (bus.t > 0) return
+      bus.t = BUS.boardMs
+      const k = bus.line.shift()
+      if (k) {
+        k.state = 'aboard'
+        tellReady()
+        return
+      }
+      say(`${clock.boarded} ${clock.boarded === 1 ? 'kid gets' : 'kids get'} on the bus, one by one.`)
+      if (clock.phase === 'left') return driveOff()
+      bus.scene = 'nod'
+      bus.t = BUS.nodMs
+      say('All ten are on. The driver gives Dreko a nod.')
+    } else if (bus.scene === 'nod') {
+      bus.t -= dt
+      if (bus.t <= 0) driveOff()
+    } else if (bus.scene === 'out' && bus.x === bus.to) {
+      // gone: now the card comes up
+      bus.scene = null
+      tellClock(true)
+    }
+  }
+  function driveOff() {
+    bus.scene = 'out'
+    bus.to = BUS.to
+    say('The bus drives off.')
   }
   // kind: 'retry' the same day again, 'day' the next day, 'fresh' a new week from Monday
   function nextMorning(kind = 'retry') {
@@ -178,6 +247,9 @@ export async function startGame(canvas, hooks = {}) {
     }
     needs = copy(deal)
     tellNeeds()
+    bus.x = BUS.from
+    bus.to = BUS.from
+    bus.scene = null
     dreko.at = DREKO.start.slice()
     dreko.path = null
     dreko.face = 'front'
@@ -298,7 +370,7 @@ export async function startGame(canvas, hooks = {}) {
       ix = 0
       iy = 0
       dreko.path = null
-      clock.card -= dt
+      if (!bus.scene) clock.card -= dt // the card waits for the bus to drive off
       if (clock.card <= 0) nextMorning(clock.phase === 'left' ? 'retry' : 'day')
     } else if (clock.phase === 'ready') {
       if (ix || iy || dreko.path) {
@@ -310,10 +382,16 @@ export async function startGame(canvas, hooks = {}) {
       clock.left -= dt / 1000
       // a kid with nothing left to do heads for the bus on their own
       for (const k of kids) if (k.state === 'home' && !needs[k.kid.name].length) sendToStop(k)
+      // the bus pulls up for the last seconds
+      if (clock.left <= BUS.comeAt && bus.to !== BUS.at[0]) {
+        bus.to = BUS.at[0]
+        say(`${BUS.comeAt} seconds left: the bus pulls up at the stop.`)
+      }
       if (counted() === kids.length) allAboard()
       else if (clock.left <= 0) busLeaves()
       else tellClock()
     }
+    stepBus(dt)
     const from = dreko.at
     let side = 0
     dreko.moving = false
@@ -396,8 +474,10 @@ export async function startGame(canvas, hooks = {}) {
 
     // the camera slides after him and never leaves the map
     const ease = 1 - Math.exp(-dt / 220)
-    const tx = Math.max(2.5, Math.min(W - 2.5, dreko.at[0]))
-    const ty = Math.max(2.5, Math.min(H - 2.5, dreko.at[1]))
+    // once the morning is over it looks at the bus stop instead
+    const look = clock.phase === 'left' || clock.phase === 'dayWon' || clock.phase === 'won' ? BUS.cam : dreko.at
+    const tx = Math.max(2.5, Math.min(W - 2.5, look[0]))
+    const ty = Math.max(2.5, Math.min(H - 2.5, look[1]))
     cam.at = [cam.at[0] + (tx - cam.at[0]) * ease, cam.at[1] + (ty - cam.at[1]) * ease]
 
     const here = placeName(dreko.at[0], dreko.at[1])
@@ -518,14 +598,19 @@ export async function startGame(canvas, hooks = {}) {
   }
 
   function draw(now) {
+    const nod = bus.scene === 'nod' ? Math.sin((1 - bus.t / BUS.nodMs) * Math.PI * 2) ** 2 : 0
     const things = [
       ...still,
-      ...kids.map((k) => posed(k.kid.name, k.at, k.art, k.size, k.walker, k.kid.floats ? 0.3 + 0.05 * Math.sin(now / 500) : 0)),
+      ...kids.filter((k) => k.state !== 'aboard').map((k) => posed(k.kid.name, k.at, k.art, k.size, k.walker, k.kid.floats ? 0.3 + 0.05 * Math.sin(now / 500) : 0)),
+      { id: 'mom', at: BUS.mom, level: 0, img: momImg, size: BUS.momSize, wide: momWide },
+      { id: 'bus', at: [bus.x, BUS.at[1]], level: 0, img: busImg, size: BUS.size, wide: busWide },
+      // the driver sits a hair in front of the bus picture, at its window; his nod is two dips of the head
+      { id: 'driver', at: [bus.x + BUS.driver[0] * Math.SQRT1_2 + 0.04, BUS.at[1] - BUS.driver[0] * Math.SQRT1_2 + 0.04], level: BUS.driver[1] - 0.12 * nod, img: driverImg, size: BUS.driverSize, wide: driverWide, roll: -0.22 * nod },
       posed('dreko', dreko.at, drekoArt, DREKO.height, drekoWalk, 0, { ghost: GOLD }),
     ]
     view.setThings(things)
     view.setMarks([
-      ...kids.map(({ at, size: s }) => ({ at, h: 0, r: s * 0.16, color: INK, opacity: 0.16 })),
+      ...kids.filter((k) => k.state !== 'aboard').map(({ at, size: s }) => ({ at, h: 0, r: s * 0.16, color: INK, opacity: 0.16 })),
       { at: dreko.at, h: 0, r: 0.3, color: INK, opacity: 0.2 },
     ])
     const tall = size.h > size.w
@@ -540,7 +625,7 @@ export async function startGame(canvas, hooks = {}) {
         head.set(k.at[0], pose.up + floatAt + k.size * pose.tall * lift, k.at[1]).project(view.camera)
         points[i][0] = (head.x * 0.5 + 0.5) * size.w
         points[i][1] = (-head.y * 0.5 + 0.5) * size.h
-        points[i][2] = head.z < 1 && Math.abs(head.x) < 1.1 && Math.abs(head.y) < 1.1
+        points[i][2] = k.state !== 'aboard' && head.z < 1 && Math.abs(head.x) < 1.1 && Math.abs(head.y) < 1.1
         points[i][3] = k.state === 'forgot' // a kid saying "Oh wait" is shown even when the bus stop is off screen
       })
       hooks.onBubbles(points)
@@ -611,6 +696,7 @@ export async function startGame(canvas, hooks = {}) {
     if (hit) walkTo(hit.x, hit.y)
   }
   function walkTo(x, y) {
+    if (y >= ROAD_Y) y = ROAD_Y - 0.4 // a tap on the road: he walks to the kerb and no further
     const from = [dreko.at[0] * TILE, dreko.at[1] * TILE]
     let path = null
     if (GMTiles.walkable(walk, Math.floor(x), Math.floor(y))) path = GMTiles.findPath(walk, from, [x * TILE, y * TILE])
@@ -701,7 +787,7 @@ export async function startGame(canvas, hooks = {}) {
       nextMorning('day')
     },
     // for tests and for the next systems (needs, clock): where things are right now
-    state: () => ({ dreko: dreko.at.slice(), place, moving: dreko.moving, known: Object.keys(known), told: { ...known }, rooms: Object.fromEntries(kids.map((k) => [k.kid.name, needs[k.kid.name].length ? ROOM_OF[needs[k.kid.name][0]] : null])), spots: Object.fromEntries(kids.map((k) => [k.kid.name, k.spot.slice()])), plan: JSON.parse(JSON.stringify(spots)), deal: copy(deal), solid: kids.filter((k) => k.state === 'home' && k.solid).map((k) => k.kid.name), at: Object.fromEntries(kids.map((k) => [k.kid.name, k.at.slice()])), clock: { phase: clock.phase, day: clock.day, loop: clock.loop, left: clock.left, total: clock.total, boarded: clock.boarded, earned: clock.earned }, near, needs: copy(needs), kids: Object.fromEntries(kids.map((k) => [k.kid.name, k.state])) }),
+    state: () => ({ bus: { x: bus.x, scene: bus.scene }, dreko: dreko.at.slice(), place, moving: dreko.moving, known: Object.keys(known), told: { ...known }, rooms: Object.fromEntries(kids.map((k) => [k.kid.name, needs[k.kid.name].length ? ROOM_OF[needs[k.kid.name][0]] : null])), spots: Object.fromEntries(kids.map((k) => [k.kid.name, k.spot.slice()])), plan: JSON.parse(JSON.stringify(spots)), deal: copy(deal), solid: kids.filter((k) => k.state === 'home' && k.solid).map((k) => k.kid.name), at: Object.fromEntries(kids.map((k) => [k.kid.name, k.at.slice()])), clock: { phase: clock.phase, day: clock.day, loop: clock.loop, left: clock.left, total: clock.total, boarded: clock.boarded, earned: clock.earned }, near, needs: copy(needs), kids: Object.fromEntries(kids.map((k) => [k.kid.name, k.state])) }),
     stop() {
       stopped = true
       input.stop()

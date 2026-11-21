@@ -20,6 +20,8 @@ export const ROWS = [
   '...............',
   '...............',
   '...............',
+  '...............',
+  '...............',
 ]
 
 export const W = ROWS[0].length
@@ -32,10 +34,13 @@ export const PLACES = {
   cubby: { name: 'Cubby room', box: [1, 7, 6, 11], floor: 'f-cubby', wall: 'w-cubby' },
   hall: { name: 'Front hall', box: [8, 7, 13, 11], floor: 'f-hall', wall: 'w-hall' },
   stop: { name: 'Bus stop', box: [0, 13, 14, 16], floor: 'f-walk', wall: 'w-out' },
+  // the pavement on the far side of the road, where Mom stands and watches (Carl: "mom across the street watching")
+  far: { name: 'Across the street', box: [0, 17, 14, 18], floor: 'f-walk', wall: 'w-out' },
 }
 
 // Which kind of ground a tile is: a place key, 'runner' (the hall rug), 'road', or null for a wall.
 export function zone(x, y) {
+  if (y >= 17) return 'far'
   if (y >= 15) return 'road'
   if (y >= 13) return 'stop'
   if ((x === 10 || x === 11) && y >= 6 && y <= 12) return 'runner'
@@ -89,3 +94,6 @@ export function floorTiles(room) {
   }
   return out
 }
+
+// The road and the far pavement start at this row. Nobody in the family walks there: the road is for the bus.
+export const ROAD_Y = 15

@@ -6,6 +6,8 @@ import { WALL } from './config.js'
 
 const TEXTURES = ['f-kitchen', 'f-bath', 'f-cubby', 'f-hall', 'f-runner', 'f-walk', 'f-road', 'w-kitchen', 'w-window', 'w-bath', 'w-cubby', 'w-hall', 'w-out']
 const CUTOUTS = ['dreko', 'dreko-back', 'stove', 'fridge', 'counter', 'table', 'cereal-bowl', ...KIDS.map(kidArt)]
+// Pictures that may not be made yet. Until a file is in public/art/, the game draws a labelled grey stand-in.
+const LATER = { bus: [2, 'BUS'], driver: [1, 'DRIVER'], mom: [0.5, 'MOM'] } // name: [width for a height of 1, label]
 const PX = 128 // one tile's picture is this many pixels across
 
 const canvas = (w, h = w) => {
@@ -30,8 +32,38 @@ export async function loadArt() {
   await Promise.all([
     ...TEXTURES.map(async (n) => (img[n] = await loadImage(base + n + '.jpg'))),
     ...CUTOUTS.map(async (n) => (img[n] = await loadImage(base + n + '.webp'))),
+    ...Object.keys(LATER).map(async (n) => (img[n] = await loadImage(base + n + '.webp').catch(() => standIn(...LATER[n])))),
   ])
   return img
+}
+
+// A grey box with its name on it, for a picture that is not made yet.
+function standIn(wide, label) {
+  const h = 256
+  const c = canvas(h * wide, h)
+  const g = c.getContext('2d')
+  g.fillStyle = '#a9a59b'
+  g.strokeStyle = '#070707'
+  g.lineWidth = 6
+  g.beginPath()
+  g.roundRect(4, 4, c.width - 8, h - 8, 26)
+  g.fill()
+  g.stroke()
+  g.fillStyle = '#070707'
+  g.textAlign = 'center'
+  g.textBaseline = 'middle'
+  g.font = `700 ${wide < 1 ? 30 : 44}px system-ui, sans-serif`
+  g.fillText(label, c.width / 2, h / 2 - 16)
+  g.font = `${wide < 1 ? 17 : 22}px system-ui, sans-serif`
+  g.fillText('stand-in', c.width / 2, h / 2 + 22)
+  return c
+}
+
+// A picture kept at its own shape (the bus is wider than it is tall): [canvas, width for a height of 1].
+export function card(im) {
+  const c = canvas(im.width, im.height)
+  c.getContext('2d').drawImage(im, 0, 0)
+  return [c, im.width / im.height]
 }
 
 // A person or a thing as a square cut-out with its feet on the bottom edge.

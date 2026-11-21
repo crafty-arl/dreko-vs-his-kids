@@ -35,6 +35,15 @@ export const WEEK = { days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Frid
 // `speed` is tiles a second, slower than Dreko so he can catch them. `restMs` is how long they stand between walks.
 export const ROAM = { fromDay: 3, where: 'room', speed: 1.5, restMs: [300, 1100] }
 
+// The bus, its driver and Mom (the ending from the game map: kids board one by one, the driver nods, Mom is
+// across the street watching). `at` is where the bus stops, `from` and `to` the x it drives in from and off to,
+// `speed` tiles a second, `size` its drawn height in tiles. `comeAt`: it pulls up when this many seconds are left.
+// `boardMs`: the pause between two kids getting on. `nodMs`: how long the driver's nod takes.
+// `driver` is where his head sits on the bus picture: across from its middle and up from the road, in tiles.
+// `mom` is her spot on the far pavement. `cam` is where the camera looks while the bus scene plays.
+// Every number is a draft, and the three pictures are grey stand-ins until the real ones are in public/art/.
+export const BUS = { at: [6.5, 15.9], from: -7, to: 24, speed: 9, size: 2.7, comeAt: 10, boardMs: 170, nodMs: 1100, driver: [1.55, 1.25], driverSize: 0.95, mom: [9.6, 17.7], momSize: 1.9, cam: [6.9, 15.5] }
+
 // Every mini task: `doneMs` is how long the tick shows before the kid walks off. Each need's own task
 // settings are in src/game/needs.js (MOVES).
 export const TASK = { doneMs: 500 }

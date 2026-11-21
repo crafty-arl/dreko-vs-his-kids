@@ -30,7 +30,8 @@ An entry for **Tiny Loop Jam 2026**. The jam window runs from Nov 20, 18:00 UTC 
   - **Sides** (braids, socks, jacket, shoes): press left or right as each step lights up.
   - The shapes, numbers and lines inside the tasks are stand-ins until each need has its own pictures.
 - Boarding: when a need is done the kid walks to the bus stop on the shared walk. A kid with nothing left waits there. A kid with one more need that day says "Oh wait, I forgot something!" at the stop, turns back and waits in the room of that need, and Dreko has to walk up again to find out what it is. A kid counts for the bus the moment their last need is done, wherever they are on the walk to the stop. Dreko can also catch a kid who is on the way back in and help them right there, before they reach the room.
-- The win: all ten on the bus on Friday. For now it is a card with words, and **Play again** starts a new week.
+- The bus scene (`BUS` in `src/game/config.js`): the bus pulls up at the stop for the last 10 seconds. When the morning is over the camera goes to the stop, the counted kids get on one by one and the bus drives off; when all ten are on, the driver nods first. Mom stands across the street and watches. The card comes up after the bus has gone. The bus, the driver and Mom are pictures in `public/art/` (`bus.webp`, `driver.webp`, `mom.webp`); a labelled grey stand-in is drawn for any that is missing. Dreko and the kids stay off the road.
+- The win: all ten on the bus on Friday. The card has words for now, and **Play again** starts a new week.
 
 - The need deal (`dealDay` in `src/game/needs.js`): there are 11 needs in the pool. Every day deals new ones at random: every kid gets one, and as the week goes on more kids get a second, always in a different room from their first. The 11th need, Shoes tied, has a line icon as a stand-in until it gets a painted one.
 - Rooms (`ROOMS` in `src/game/needs.js`, `SPOTS` in `src/game/house.js`): every need belongs to a room, and a kid waits in the room of the need they have. Kitchen: breakfast, packed lunch. Bathroom: teeth, braids. Cubby room: socks, jacket, homework. Front hall: permission slip, backpack, show-and-tell, shoes. The pairing is a draft.
@@ -38,7 +39,7 @@ An entry for **Tiny Loop Jam 2026**. The jam window runs from Nov 20, 18:00 UTC 
 - The rules log: the **Log** button (or `?log` in the address) lists every rule as it fires, newest first, with the day, the try and the clock: the deal, a need told, a task opened, a miss, a need done, a kid at the stop, a kid who forgot something, the bus leaving and the time earned. It is a tool for checking the game.
 - Sound (`src/game/sound.js`): `menu.mp3` loops through the whole game. On top of it, the tick-tock plays for the last 10 seconds before the bus, `Bus-lose.mp3` while the "bus left" card is up, and `Bus-win.mp3` on the win. The menu music fades out under those last two and comes back after. Nothing plays until the first tap or key, as browsers ask. The **Sound** button turns it off and on. `Dad-died.mp3` has no moment in the game yet.
 
-Not in yet: each need's own task pictures, the bus, mom and the driver as pictures, the title and ending screens, drawn walking frames, and sound effects (steps, task done, kid boards).
+Not in yet: each need's own task pictures, the title and ending screens, drawn walking frames, and sound effects (steps, task done, kid boards).
 
 ## Run it
 
