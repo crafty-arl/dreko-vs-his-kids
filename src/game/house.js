@@ -79,3 +79,13 @@ export const SPOTS = {
   cubby: mid([[1, 7], [5, 7], [1, 9], [1, 11], [4, 11], [6, 11]]),
   hall: mid([[8, 7], [8, 11], [13, 7], [13, 9], [13, 11], [12, 8]]),
 }
+
+// Every floor tile of a room a kid can walk to (not furniture), or of all four rooms when no room is named.
+export function floorTiles(room) {
+  const out = []
+  for (const key of room ? [room] : ['kitchen', 'bath', 'cubby', 'hall']) {
+    const [x0, y0, x1, y1] = PLACES[key].box
+    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (!PROPS.some((p) => p.at[0] === x && p.at[1] === y)) out.push([x, y])
+  }
+  return out
+}

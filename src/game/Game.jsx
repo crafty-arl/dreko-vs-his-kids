@@ -164,12 +164,12 @@ export default function Game() {
 
   // Dreko stands still while he helps a kid. The clock keeps running.
   useEffect(() => {
-    gameRef.current?.setBusy(!!task)
+    gameRef.current?.setBusy(task)
   }, [task, status])
 
   // the bus does not wait for a task: when it leaves, or the kid walks off, the task closes
   useEffect(() => {
-    if (task && (clock.phase !== 'run' && clock.phase !== 'ready' || ready[task])) setTask(null)
+    if (task && (clock.phase !== 'run' && clock.phase !== 'ready' || ready[task] === 'walking' || ready[task] === 'stop')) setTask(null)
   }, [task, clock.phase, ready])
 
   useEffect(() => {
@@ -239,7 +239,7 @@ export default function Game() {
         </div>
       )}
       {showLog && (
-        <section className="rules-log" aria-label="Rules log">
+        <section className={`rules-log ${task ? 'rules-log-small' : ''}`} aria-label="Rules log">
           <h2>Rules log <small>newest first</small></h2>
           <ol>
             {log.map((line) => (

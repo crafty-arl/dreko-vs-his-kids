@@ -781,3 +781,6 @@ body,
 @media (min-width: 720px) {
   .rules-log { right: auto; width: 440px; }
 }
+
+/* while a mini task is open the log shrinks, so it never covers the task's buttons */
+.rules-log.rules-log-small { max-height: 15vh; }

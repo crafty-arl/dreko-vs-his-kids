@@ -34,8 +34,8 @@ export default function Overlay({ place, known, needs, ready, helping, clock, wo
   const iconOf = (state, kid) => (state === 'ready' ? 'tick' : state === 'known' ? needOf(kid) : 'ask')
   const day = WEEK.days[clock.day]
   const nextDay = WEEK.days[clock.day + 1]
-  // while the morning runs this counts who is standing at the stop; once the bus has gone, who got on
-  const onBus = over ? clock.boarded : Object.values(ready).filter((s) => s === 'stop').length
+  // a kid counts the moment their last need is done; once the bus has gone, this is who got on
+  const onBus = over ? clock.boarded : KIDS.filter((kid) => needs[kid.name] && !needs[kid.name].length).length
   const earned = clock.earned || 0
   const learned = Object.keys(known).length
   const timeLeft = clock.left
@@ -73,7 +73,7 @@ export default function Overlay({ place, known, needs, ready, helping, clock, wo
           {settings}
         </div>
         <div className="hud-side hud-right">
-          <div className="chip" aria-label={`${onBus} of ${KIDS.length} kids ${over ? 'on the bus' : 'at the bus stop'}`}>
+          <div className="chip" aria-label={`${onBus} of ${KIDS.length} kids ${over ? 'on the bus' : 'ready for the bus'}`}>
             <Icon name="bus" wash="gold" />
             <span className="num">{onBus}/{KIDS.length}</span>
           </div>
@@ -133,7 +133,7 @@ export default function Overlay({ place, known, needs, ready, helping, clock, wo
       {listOpen && !over && (
         <div className="list" role="dialog" aria-label="Need list" onClick={onToggleList}>
           <div className="panel" onClick={(e) => e.stopPropagation()}>
-            <h2>{day} <small>{onBus} of {KIDS.length} at the stop</small></h2>
+            <h2>{day} <small>{onBus} of {KIDS.length} ready for the bus</small></h2>
             <ul className="rows">
               {KIDS.map((kid) => {
                 const state = stateOf(kid)

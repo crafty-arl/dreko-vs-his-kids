@@ -29,6 +29,12 @@ export const CLOCK = { firstLoop: 30, perKid: 10, cardMs: 3200, dayCardMs: 3800,
 // count starts at ten, and each step up gives more kids a second need. The numbers are a draft to tune.
 export const WEEK = { days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'], needs: [10, 12, 14, 16, 18] }
 
+// Kids on the move (Carl and Tessa, Nov 21): on day 4 and day 5 "the kids should be able to be walking around the
+// house and you have to catch the kid to get that need done". `fromDay` counts from 0, so 3 is Thursday.
+// `where` is 'room' (a kid walks around the room of the need they have) or 'house' (anywhere indoors).
+// `speed` is tiles a second, slower than Dreko so he can catch them. `restMs` is how long they stand between walks.
+export const ROAM = { fromDay: 3, where: 'room', speed: 1.5, restMs: [300, 1100] }
+
 // Every mini task: `doneMs` is how long the tick shows before the kid walks off. Each need's own task
 // settings are in src/game/needs.js (MOVES).
 export const TASK = { doneMs: 500 }
