@@ -5,6 +5,14 @@ export const TILE = 64 // one tile in the walk grid's own units (gm-tiles wants 
 // One fixed diagonal camera. It never turns or tilts, it only slides to follow Dreko.
 export const CAMERA = { angle: -45, tilt: 42, distWide: 12.5, distTall: 17 }
 
+// Room view (Carl, Nov 21: "better camera angles"). Indoors the camera does not chase Dreko: it frames the whole
+// room he is in and slides to the next room when he walks through a door. The angle never changes.
+// `wide` and `tall` are how many tiles of screen a room needs across and down, `per` is how many tiles the
+// screen shows down its height for each unit of camera distance, `shift` moves the view off the room's middle
+// (the near corner of a room looks bigger than the far one, so the middle of the picture is not the middle of
+// the floor), and `slideMs` is how quickly it moves between rooms. Drafts to tune.
+export const ROOM_VIEW = { on: true, wide: 8.7, tall: 10.4, per: 0.715, shift: [-1.3, -0.7], slideMs: 320 }
+
 // Wall heights in floors. Back walls are tall, the walls between rooms are low so nothing hides,
 // and the walls nearest the camera are cut down to a kerb.
 export const WALL = { tall: 2, half: 0.85, cut: 0.3 }

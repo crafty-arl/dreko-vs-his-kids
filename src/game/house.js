@@ -89,10 +89,10 @@ export const PROPS = [
   { id: 'desk', at: [5, 7], img: 'desk', size: 1.4, front: 0.2 },
   { id: 'coats', at: [6, 7], img: 'coat-rack', size: 1.9, front: 0.2 },
   // Front hall: permission slip, backpack, show-and-tell, shoes
-  { id: 'shoes', at: [8, 7], img: 'shoe-rack', size: 1.0, front: 0.2 },
-  { id: 'hooks', at: [9, 7], img: 'backpack-hooks', size: 1.9, front: 0.2, flip: true },
-  { id: 'hall-table', at: [12, 7], img: 'hall-table', size: 1.15, front: 0.2 },
-  { id: 'shelf', at: [13, 7], img: 'show-shelf', size: 2.2, front: 0.2 },
+  { id: 'shoes', at: [9, 7], img: 'shoe-rack', size: 1.0, front: 0.2 },
+  { id: 'hooks', at: [8, 7], img: 'backpack-hooks', size: 1.9, front: 0.2, flip: true },
+  { id: 'hall-table', at: [13, 7], img: 'hall-table', size: 1.15, front: 0.2 },
+  { id: 'shelf', at: [12, 7], img: 'show-shelf', size: 2.2, front: 0.2 },
   // Outside
   { id: 'stop-sign', at: [1, 13], img: 'bus-stop-sign', size: 2.4, front: 0.1 },
   { id: 'mailbox', at: [13, 13], img: 'mailbox', size: 1.5, front: 0.1 },

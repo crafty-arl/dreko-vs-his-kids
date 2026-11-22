@@ -2,9 +2,9 @@
 import * as THREE from 'three'
 import { GMThree, GMTiles } from '../engine/index.js'
 import { buildHouse, card, cutout, loadArt } from './art.js'
-import { ANXIETY, BUS, CAMERA, CLOCK, DREKO, GOLD, INK, PAPER, ROAM, TILE, WALK, WEEK } from './config.js'
+import { ANXIETY, BUS, CAMERA, CLOCK, DREKO, GOLD, INK, PAPER, ROAM, ROOM_VIEW, TILE, WALK, WEEK } from './config.js'
 import { KIDS, kidArt } from './family.js'
-import { H, PLACES, PROPS, ROAD_Y, ROWS, SMALL, SOLID, SPOTS, W, floorTiles, placeName } from './house.js'
+import { H, PLACES, PROPS, ROAD_Y, ROWS, SMALL, SOLID, SPOTS, W, floorTiles, placeName, zone } from './house.js'
 import { createInput } from './input.js'
 import { ASK_DISTANCE, MOVES, MOVE_NAMES, NEEDS, ROOM_OF, dealDay } from './needs.js'
 import { createWalker, poseOf, stepWalker } from './walk.js'
@@ -308,7 +308,7 @@ export async function startGame(canvas, hooks = {}) {
     hooks.onNear?.(null)
     tellKnown()
     tellReady()
-    cam.at = dreko.at.slice()
+    cam.at = (roomLook[roomAt(dreko.at)] ?? dreko.at).slice()
     tellClock(true)
     if (kind === 'retry') {
       const n = Object.keys(known).length
@@ -397,7 +397,19 @@ export async function startGame(canvas, hooks = {}) {
   const head = new THREE.Vector3()
   const lift = 1 / Math.cos((CAMERA.tilt * Math.PI) / 180) // the cut-outs are stretched by this to stand upright
   const points = kids.map(() => [0, 0, false, false])
-  const cam = { at: dreko.at.slice() }
+  // which room's view the camera takes for someone standing at `at`, or null outside
+  const roomAt = (at) => {
+    if (!ROOM_VIEW.on) return null
+    const z = zone(Math.floor(at[0]), Math.floor(at[1]))
+    const key = z === 'runner' ? (at[1] < 6.5 ? 'bath' : at[1] < 13 ? 'hall' : null) : z
+    return key in SPOTS ? key : null
+  }
+  // where the camera looks for each room: its middle, moved by ROOM_VIEW.shift
+  const roomLook = Object.fromEntries(Object.keys(SPOTS).map((key) => {
+    const [x0, y0, x1, y1] = PLACES[key].box
+    return [key, [(x0 + x1 + 1) / 2 + ROOM_VIEW.shift[0], (y0 + y1 + 1) / 2 + ROOM_VIEW.shift[1]]]
+  }))
+  const cam = { at: (roomLook[roomAt(dreko.at)] ?? dreko.at).slice() }
   let size = { w: 1, h: 1 }
   let place = ''
   let stopped = false
@@ -549,13 +561,18 @@ export async function startGame(canvas, hooks = {}) {
       hooks.onNear?.(near)
     }
 
-    // the camera slides after him and never leaves the map
-    const ease = 1 - Math.exp(-dt / 220)
+    // Indoors the camera frames the whole room he is in; outside it slides after him. It never leaves the map.
+    const room = roomAt(dreko.at)
+    const ease = 1 - Math.exp(-dt / (room ? ROOM_VIEW.slideMs : 220))
     // once the morning is over it looks at the bus stop instead
-    const look = clock.phase === 'left' || clock.phase === 'dayWon' || clock.phase === 'won' ? BUS.cam : dreko.at
+    const look = clock.phase === 'left' || clock.phase === 'dayWon' || clock.phase === 'won' ? BUS.cam : room ? roomLook[room] : dreko.at
     const tx = Math.max(2.5, Math.min(W - 2.5, look[0]))
     const ty = Math.max(2.5, Math.min(H - 2.5, look[1]))
     cam.at = [cam.at[0] + (tx - cam.at[0]) * ease, cam.at[1] + (ty - cam.at[1]) * ease]
+    // far enough back that a whole room fits the screen, across and down; the bus scene is watched from closer
+    const over = look === BUS.cam
+    const want = over || !ROOM_VIEW.on ? (size.h > size.w ? CAMERA.distTall : CAMERA.distWide) : Math.max(ROOM_VIEW.wide / (ROOM_VIEW.per * (size.w / size.h)), ROOM_VIEW.tall / ROOM_VIEW.per)
+    cam.dist = cam.dist ? cam.dist + (want - cam.dist) * (1 - Math.exp(-dt / 450)) : want
 
     const here = placeName(dreko.at[0], dreko.at[1])
     if (here !== place) {
@@ -704,7 +721,7 @@ export async function startGame(canvas, hooks = {}) {
       { at: dreko.at, h: 0, r: 0.3, color: INK, opacity: 0.2 },
     ])
     const tall = size.h > size.w
-    view.render({ mode: 'orbit', angle: CAMERA.angle, tilt: CAMERA.tilt, upTo: 1, at: [cam.at[0], cam.at[1], 0], dist: tall ? CAMERA.distTall : CAMERA.distWide })
+    view.render({ mode: 'orbit', angle: CAMERA.angle, tilt: CAMERA.tilt, upTo: 1, at: [cam.at[0], cam.at[1], 0], dist: cam.dist ?? (tall ? CAMERA.distTall : CAMERA.distWide) })
     if (mapCanvas) drawMap()
 
     // where the top of each kid's head is on screen, for the bubbles
