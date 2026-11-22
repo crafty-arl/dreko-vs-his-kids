@@ -1,0 +1,37 @@
+# Camera guide for painting furniture
+
+`camera-guide.png` is the kitchen taken from the game's own camera, with no kids and no buttons. It goes in
+with every furniture prompt as the second picture, so a new thing is painted from the game's real angle
+instead of a guessed one (Carl, Nov 21: "the props need to be designed for a 2.5 world").
+
+The camera never turns: the house is seen from above, turned 45 degrees. The back wall on the right of the
+guide is a room's north wall, and furniture on it runs from the upper left down to the lower right. The
+back wall on the left is a west wall, and furniture on it runs from the upper right down to the lower left.
+
+## The 2.5D prompt
+
+Attach two pictures: `public/art/counter.webp` (style and colour) and `tools/prop-guide/camera-guide.png` (camera).
+
+```
+Picture 1 is a guide for drawing style and colour only: hand-drawn black ink outline with a soft watercolour
+wash on paper, in only black, white and warm grey, no other colour at all.
+
+Picture 2 is a room from the 2.5D isometric game this prop is for. It shows the game's one fixed camera: the
+room is seen from above and turned 45 degrees, so the floor tiles are diamonds.
+
+Draw one single prop for that 2.5D isometric game: [THING].
+
+Draw it from exactly the same camera as the fridge, stove and counter standing along the back wall on the
+right of picture 2. It stands against that same wall. Its back is toward the upper right and its front faces
+the lower left. Its long side runs along that wall, from the upper left down to the lower right of the
+picture, at the same slant as that row of furniture. On the floor it covers [FOOTPRINT]. We see its top, its
+front and its right end. Do not draw it front-on and do not draw it side-on.
+
+Draw only the prop. Do not draw the room, the floor, the wall or anything else from picture 2.
+
+The whole prop is inside the picture with clear empty space on every side. It is a plain object: no face, no
+eyes, no arms, no people, no characters. No text, no letters, no numbers, no logos, no border, no ground shadow.
+
+Background: one flat pure green (#00FF00) from edge to edge. No white paper, no frame, no glow, no gradient.
+Nothing in the prop itself is green.
+```
