@@ -7,7 +7,15 @@ import { WALL } from './config.js'
 const TEXTURES = ['f-kitchen', 'f-bath', 'f-cubby', 'f-hall', 'f-runner', 'f-walk', 'f-road', 'w-kitchen', 'w-window', 'w-bath', 'w-cubby', 'w-hall', 'w-out']
 const CUTOUTS = ['dreko', 'dreko-back', 'stove', 'fridge', 'counter', 'table', 'cereal-bowl', 'icons/sweat', ...KIDS.map(kidArt)]
 // Pictures that may not be made yet. Until a file is in public/art/, the game draws a labelled grey stand-in.
-const LATER = { bus: [2, 'BUS'], driver: [1, 'DRIVER'], mom: [0.5, 'MOM'], 'mom-back': [0.5, 'MOM back'] } // name: [width for a height of 1, label]
+const LATER = {
+  bus: [2, 'BUS'], driver: [1, 'DRIVER'], mom: [0.5, 'MOM'], 'mom-back': [0.5, 'MOM back'],
+  // the home's furniture, painted on Nov 21. A thing added to house.js before its picture exists goes here too.
+  pantry: [0.5, 'PANTRY'], chair: [0.6, 'CHAIR'], 'lunch-boxes': [1.4, 'LUNCH'],
+  vanity: [0.6, 'BRAID MIRROR'], sink: [0.6, 'SINK'], toilet: [0.8, 'TOILET'], tub: [2, 'BATHTUB'], towels: [0.6, 'TOWELS'],
+  cubbies: [0.55, 'CUBBIES'], 'sock-basket': [1, 'SOCKS'], desk: [0.9, 'DESK'], 'coat-rack': [0.5, 'COATS'],
+  'shoe-rack': [1.1, 'SHOES'], 'backpack-hooks': [0.6, 'BACKPACKS'], 'hall-table': [0.9, 'SLIP TABLE'], 'show-shelf': [0.5, 'SHOW SHELF'],
+  'bus-stop-sign': [0.35, 'BUS STOP'], mailbox: [0.6, 'MAIL'],
+} // name: [width for a height of 1, label]
 const PX = 128 // one tile's picture is this many pixels across
 
 const canvas = (w, h = w) => {
@@ -54,18 +62,27 @@ function standIn(wide, label) {
   g.fillStyle = '#070707'
   g.textAlign = 'center'
   g.textBaseline = 'middle'
-  g.font = `700 ${wide < 1 ? 30 : 44}px system-ui, sans-serif`
-  g.fillText(label, c.width / 2, h / 2 - 16)
-  g.font = `${wide < 1 ? 17 : 22}px system-ui, sans-serif`
-  g.fillText('stand-in', c.width / 2, h / 2 + 22)
+  // the name, split over lines and as big as fits the box
+  const words = label.split(' ')
+  let px = 46
+  g.font = `700 ${px}px system-ui, sans-serif`
+  const widest = Math.max(...words.map((w) => g.measureText(w).width))
+  px = Math.max(16, Math.min(px, (px * (c.width - 28)) / widest))
+  g.font = `700 ${px}px system-ui, sans-serif`
+  words.forEach((w, i) => g.fillText(w, c.width / 2, h / 2 + (i - (words.length - 1) / 2) * px * 1.05))
   c.standIn = true
   return c
 }
 
 // A picture kept at its own shape (the bus is wider than it is tall): [canvas, width for a height of 1].
-export function card(im) {
+export function card(im, flip = false) {
   const c = canvas(im.width, im.height)
-  c.getContext('2d').drawImage(im, 0, 0)
+  const g = c.getContext('2d')
+  if (flip) {
+    g.translate(im.width, 0)
+    g.scale(-1, 1)
+  }
+  g.drawImage(im, 0, 0)
   return [c, im.width / im.height]
 }
 

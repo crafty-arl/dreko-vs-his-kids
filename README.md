@@ -14,6 +14,7 @@ An entry for **Tiny Loop Jam 2026**. The jam window runs from Nov 20, 18:00 UTC 
 ## What is in so far
 
 - The house as a tile map (`src/game/house.js`): Kitchen, Bathroom, Cubby room, Front hall and the Bus stop.
+- Furniture in every room (`PROPS` and `SMALL` in `src/game/house.js`, pictures in `public/art/`): each thing belongs to a need of its room, such as the sink for teeth, the ten sleep cubbies, the sock basket and the shoe rack. Tall things stand against the two back walls so nothing hides a kid. `flip` turns a picture to face into the room.
 - The ten kids (`src/game/family.js`). Each day they are dealt across the rooms by what they need.
 - Dreko walks. Tap the floor, use the arrow keys or WASD, or use a controller stick or D-pad.
 - One fixed diagonal camera that follows him.

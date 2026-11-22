@@ -4,7 +4,7 @@ import { GMThree, GMTiles } from '../engine/index.js'
 import { buildHouse, card, cutout, loadArt } from './art.js'
 import { ANXIETY, BUS, CAMERA, CLOCK, DREKO, GOLD, INK, PAPER, ROAM, TILE, WALK, WEEK } from './config.js'
 import { KIDS, kidArt } from './family.js'
-import { H, PLACES, PROPS, ROAD_Y, ROWS, SMALL, SPOTS, W, floorTiles, placeName } from './house.js'
+import { H, PLACES, PROPS, ROAD_Y, ROWS, SMALL, SOLID, SPOTS, W, floorTiles, placeName } from './house.js'
 import { createInput } from './input.js'
 import { ASK_DISTANCE, MOVES, MOVE_NAMES, NEEDS, ROOM_OF, dealDay } from './needs.js'
 import { createWalker, poseOf, stepWalker } from './walk.js'
@@ -13,7 +13,7 @@ import { createWalker, poseOf, stepWalker } from './walk.js'
 // room right now). A kid who has left for the bus no longer blocks the way.
 function walkGrid(spots = []) {
   const rows = ROWS.map((r, y) => (y >= ROAD_Y ? r.replace(/./g, '#') : r).split('')) // the road is for the bus
-  for (const p of PROPS) rows[p.at[1]][p.at[0]] = '#'
+  for (const [x, y] of SOLID) rows[y][x] = '#'
   for (const s of spots) rows[Math.floor(s[1])][Math.floor(s[0])] = '#'
   return { x0: 0, y0: 0, t: TILE, rows: rows.map((r) => r.join('')) }
 }
@@ -50,10 +50,17 @@ export async function startGame(canvas, hooks = {}) {
     back: cutout(img['dreko-back']),
     'back-flip': cutout(img['dreko-back'], true),
   }
+  // furniture keeps the shape of its picture. `flip` mirrors it: the pictures are painted with their front toward
+  // the lower left (right for a thing on the north wall), and a thing on the west wall has to face the other way.
+  const shape = (im, flip) => {
+    const [c, wide] = card(im, flip && !im.standIn)
+    return { img: c, wide }
+  }
   const still = [
     // furniture is drawn from its front corner, so its card stands a little toward the camera (south-east) of the tile's middle
-    ...PROPS.map((p) => ({ id: p.id, at: [p.at[0] + 0.5 + p.front, p.at[1] + 0.5 + p.front], level: 0, img: cutout(img[p.img]), size: p.size })),
-    ...SMALL.map((s) => ({ id: s.id, at: s.at, level: s.up, img: cutout(img[s.img]), size: s.size })),
+    // (`shift` slides a wide thing along the wall so it sits over all of its tiles)
+    ...PROPS.map((p) => ({ id: p.id, at: [p.at[0] + 0.5 + p.front + (p.shift ?? 0), p.at[1] + 0.5 + p.front], level: 0, ...shape(img[p.img], p.flip), size: p.size })),
+    ...SMALL.map((s) => ({ id: s.id, at: s.at, level: s.up, ...shape(img[s.img], s.flip), size: s.size })),
   ]
   // every kid gets the same walker as Dreko, only sized to their height and a touch quicker
   const kids = KIDS.map((k, i) => {

@@ -63,16 +63,49 @@ export function placeName(x, y) {
 }
 
 // Solid furniture. `at` is its tile, `size` its drawn height in tiles, `front` how far its picture stands toward
-// the camera from the tile's middle (the pictures are drawn from their front corner).
+// the camera from the tile's middle (the pictures are drawn from their front corner). `more` lists any other
+// tiles a wide thing covers. A thing whose picture is not painted yet is drawn as a grey labelled box
+// (src/game/art.js LATER). `flip` mirrors a picture so its front faces into the room. The camera looks from the south-east, so the tall things stand against the north and
+// west walls of a room and nothing tall stands in front of a place a kid waits.
+// Which things, and where, is a draft of Nov 21 that Carl said go on. Each thing belongs to a need of its room.
 export const PROPS = [
-  { id: 'fridge', at: [1, 1], img: 'fridge', size: 2.3, front: 0.3 },
-  { id: 'stove', at: [2, 1], img: 'stove', size: 1.45, front: 0.3 },
+  // Kitchen: breakfast, packed lunch
+  { id: 'fridge', at: [1, 1], img: 'fridge', size: 2.3, front: 0.3, flip: true },
+  { id: 'stove', at: [2, 1], img: 'stove', size: 1.45, front: 0.3, flip: true },
   { id: 'counter', at: [3, 1], img: 'counter', size: 1.5, front: 0.3 },
-  { id: 'table', at: [3, 3], img: 'table', size: 1.6, front: 0.33 },
+  { id: 'pantry', at: [1, 3], img: 'pantry', size: 2.3, front: 0.2, flip: true },
+  { id: 'table', at: [4, 3], img: 'table', size: 1.6, front: 0.33 },
+  { id: 'chair-a', at: [3, 3], img: 'chair', size: 1.35, front: 0.2 },
+  { id: 'chair-b', at: [5, 3], img: 'chair', size: 1.35, front: 0.2 },
+  // Bathroom: teeth brushed, antenna braids
+  { id: 'vanity', at: [8, 1], img: 'vanity', size: 1.8, front: 0.2 },
+  { id: 'sink', at: [10, 1], img: 'sink', size: 2.0, front: 0.2 },
+  { id: 'toilet', at: [11, 1], img: 'toilet', size: 1.3, front: 0.2 },
+  { id: 'tub', at: [12, 1], more: [[13, 1]], img: 'tub', size: 1.35, front: 0.2, shift: 0.5 },
+  { id: 'towels', at: [8, 4], img: 'towels', size: 1.6, front: 0.2, flip: true },
+  // Cubby room: the kids sleep in cubbies, not beds. Five stacks of two along the wall is ten cubbies.
+  ...[7, 8, 9, 10, 11].map((y, i) => ({ id: 'cubby-' + i, at: [1, y], img: 'cubbies', size: 2.0, front: 0.2, flip: true })),
+  { id: 'socks', at: [4, 7], img: 'sock-basket', size: 0.9, front: 0.2 },
+  { id: 'desk', at: [5, 7], img: 'desk', size: 1.4, front: 0.2 },
+  { id: 'coats', at: [6, 7], img: 'coat-rack', size: 1.9, front: 0.2 },
+  // Front hall: permission slip, backpack, show-and-tell, shoes
+  { id: 'shoes', at: [8, 7], img: 'shoe-rack', size: 1.0, front: 0.2 },
+  { id: 'hooks', at: [9, 7], img: 'backpack-hooks', size: 1.9, front: 0.2, flip: true },
+  { id: 'hall-table', at: [12, 7], img: 'hall-table', size: 1.15, front: 0.2 },
+  { id: 'shelf', at: [13, 7], img: 'show-shelf', size: 2.2, front: 0.2 },
+  // Outside
+  { id: 'stop-sign', at: [1, 13], img: 'bus-stop-sign', size: 2.4, front: 0.1 },
+  { id: 'mailbox', at: [13, 13], img: 'mailbox', size: 1.5, front: 0.1 },
 ]
 
+// Every tile furniture stands on.
+export const SOLID = PROPS.flatMap((p) => [p.at, ...(p.more ?? [])])
+
 // Small things that sit on furniture: `up` is how high off the floor, in floors. They stand just in front of the furniture's card.
-export const SMALL = [{ id: 'bowl', at: [3.9, 3.9], img: 'cereal-bowl', size: 0.5, up: 1.45 }]
+export const SMALL = [
+  { id: 'bowl', at: [4.9, 3.9], img: 'cereal-bowl', size: 0.5, up: 1.45 },
+  { id: 'lunch-boxes', at: [3.95, 1.95], img: 'lunch-boxes', size: 0.55, up: 1.3 },
+]
 
 // Where a kid can stand and wait in each room, as tile middles. Six per room, picked by hand: never on furniture,
 // never in a doorway or on the tile in front of one, and never on the hall runner, so the way through the house
@@ -80,9 +113,9 @@ export const SMALL = [{ id: 'bowl', at: [3.9, 3.9], img: 'cereal-bowl', size: 0.
 const mid = (tiles) => tiles.map(([x, y]) => [x + 0.5, y + 0.55])
 export const SPOTS = {
   kitchen: mid([[4, 1], [6, 1], [2, 2], [1, 5], [5, 5], [6, 5]]),
-  bath: mid([[9, 1], [11, 1], [13, 2], [13, 4], [8, 5], [12, 5]]),
-  cubby: mid([[1, 7], [5, 7], [1, 9], [1, 11], [4, 11], [6, 11]]),
-  hall: mid([[8, 7], [8, 11], [13, 7], [13, 9], [13, 11], [12, 8]]),
+  bath: mid([[9, 2], [11, 2], [13, 2], [13, 4], [8, 5], [12, 5]]),
+  cubby: mid([[2, 8], [2, 10], [4, 8], [6, 8], [4, 11], [6, 11]]),
+  hall: mid([[8, 8], [9, 8], [12, 8], [13, 9], [8, 11], [13, 11]]),
 }
 
 // Every floor tile of a room a kid can walk to (not furniture), or of all four rooms when no room is named.
@@ -90,7 +123,7 @@ export function floorTiles(room) {
   const out = []
   for (const key of room ? [room] : ['kitchen', 'bath', 'cubby', 'hall']) {
     const [x0, y0, x1, y1] = PLACES[key].box
-    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (!PROPS.some((p) => p.at[0] === x && p.at[1] === y)) out.push([x, y])
+    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (!SOLID.some((t) => t[0] === x && t[1] === y)) out.push([x, y])
   }
   return out
 }
