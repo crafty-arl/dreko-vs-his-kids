@@ -52,15 +52,17 @@ export async function startGame(canvas, hooks = {}) {
   }
   // furniture keeps the shape of its picture. `flip` mirrors it: the pictures are painted with their front toward
   // the lower left (right for a thing on the north wall), and a thing on the west wall has to face the other way.
-  const shape = (im, flip) => {
-    const [c, wide] = card(im, flip && !im.standIn)
-    return { img: c, wide }
+  // `lean` turns a picture that was painted too front-on to lie along its wall (art.js); the card grows taller
+  // by the lean, so its size grows with it and the thing itself stays the size it was.
+  const shape = (im, { flip, lean = 0, size }) => {
+    const [c, wide] = card(im, flip && !im.standIn, im.standIn ? 0 : lean)
+    return { img: c, wide, size: (size * c.height) / im.height }
   }
   const still = [
     // furniture is drawn from its front corner, so its card stands a little toward the camera (south-east) of the tile's middle
     // (`shift` slides a wide thing along the wall so it sits over all of its tiles)
-    ...PROPS.map((p) => ({ id: p.id, at: [p.at[0] + 0.5 + p.front + (p.shift ?? 0), p.at[1] + 0.5 + p.front], level: 0, ...shape(img[p.img], p.flip), size: p.size })),
-    ...SMALL.map((s) => ({ id: s.id, at: s.at, level: s.up, ...shape(img[s.img], s.flip), size: s.size })),
+    ...PROPS.map((p) => ({ id: p.id, at: [p.at[0] + 0.5 + p.front + (p.shift ?? 0), p.at[1] + 0.5 + p.front], level: 0, ...shape(img[p.img], p) })),
+    ...SMALL.map((s) => ({ id: s.id, at: s.at, level: s.up, ...shape(img[s.img], s) })),
   ]
   // every kid gets the same walker as Dreko, only sized to their height and a touch quicker
   const kids = KIDS.map((k, i) => {

@@ -75,13 +75,14 @@ export const PROPS = [
   { id: 'counter', at: [3, 1], img: 'counter', size: 1.5, front: 0.3 },
   { id: 'pantry', at: [1, 3], img: 'pantry', size: 2.3, front: 0.2, flip: true },
   { id: 'table', at: [4, 3], img: 'table', size: 1.6, front: 0.33 },
-  { id: 'chair-a', at: [3, 3], img: 'chair', size: 1.35, front: 0.2 },
-  { id: 'chair-b', at: [5, 3], img: 'chair', size: 1.35, front: 0.2 },
+  // the two chairs sit on the far sides of the table, each facing it
+  { id: 'chair-a', at: [3, 3], img: 'chair', size: 1.35, front: 0.2, flip: true },
+  { id: 'chair-b', at: [4, 2], img: 'chair', size: 1.35, front: 0.2 },
   // Bathroom: teeth brushed, antenna braids
   { id: 'vanity', at: [8, 1], img: 'vanity', size: 1.8, front: 0.2 },
   { id: 'sink', at: [10, 1], img: 'sink', size: 2.0, front: 0.2 },
   { id: 'toilet', at: [11, 1], img: 'toilet', size: 1.3, front: 0.2 },
-  { id: 'tub', at: [12, 1], more: [[13, 1]], img: 'tub', size: 1.35, front: 0.2, shift: 0.5 },
+  { id: 'tub', at: [12, 1], more: [[13, 1]], img: 'tub', size: 1.35, front: 0.2, shift: 0.5, flip: true, lean: 0.3 },
   { id: 'towels', at: [8, 4], img: 'towels', size: 1.6, front: 0.2, flip: true },
   // Cubby room: the kids sleep in cubbies, not beds. Five stacks of two along the wall is ten cubbies.
   ...[7, 8, 9, 10, 11].map((y, i) => ({ id: 'cubby-' + i, at: [1, y], img: 'cubbies', size: 2.0, front: 0.2, flip: true })),
@@ -89,7 +90,7 @@ export const PROPS = [
   { id: 'desk', at: [5, 7], img: 'desk', size: 1.4, front: 0.2 },
   { id: 'coats', at: [6, 7], img: 'coat-rack', size: 1.9, front: 0.2 },
   // Front hall: permission slip, backpack, show-and-tell, shoes
-  { id: 'shoes', at: [9, 7], img: 'shoe-rack', size: 1.0, front: 0.2 },
+  { id: 'shoes', at: [9, 7], img: 'shoe-rack', size: 1.0, front: 0.2, lean: 0.22 },
   { id: 'hooks', at: [8, 7], img: 'backpack-hooks', size: 1.9, front: 0.2, flip: true },
   { id: 'hall-table', at: [13, 7], img: 'hall-table', size: 1.15, front: 0.2 },
   { id: 'shelf', at: [12, 7], img: 'show-shelf', size: 2.2, front: 0.2 },

@@ -75,15 +75,19 @@ function standIn(wide, label) {
 }
 
 // A picture kept at its own shape (the bus is wider than it is tall): [canvas, width for a height of 1].
-export function card(im, flip = false) {
-  const c = canvas(im.width, im.height)
+// `lean` slides the picture down as it goes right (up, if negative), by that share of its width. Upright lines
+// stay upright. It turns a thing that was painted too front-on so that it lies along a wall of the diagonal room.
+export function card(im, flip = false, lean = 0) {
+  const drop = Math.abs(lean) * im.width
+  const c = canvas(im.width, im.height + drop)
   const g = c.getContext('2d')
+  g.transform(1, lean, 0, 1, 0, lean < 0 ? drop : 0)
   if (flip) {
     g.translate(im.width, 0)
     g.scale(-1, 1)
   }
   g.drawImage(im, 0, 0)
-  return [c, im.width / im.height]
+  return [c, c.width / c.height]
 }
 
 // A person or a thing as a square cut-out with its feet on the bottom edge.
