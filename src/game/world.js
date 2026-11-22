@@ -8,6 +8,7 @@ import { H, OUTSIDE, PLACES, PROPS, ROAD_Y, ROWS, SHEETS, SMALL, SOLID, SPOTS, W
 import { createInput } from './input.js'
 import { ASK_DISTANCE, MOVES, MOVE_NAMES, NEEDS, ROOM_OF, dealDay } from './needs.js'
 import { createWalker, poseOf, stepWalker } from './walk.js'
+import { dayAfter, levelOf } from './level.js'
 
 // The walk grid: walls and furniture are solid, and so is every tile in `spots` (where a kid stands waiting in a
 // room right now). A kid who has left for the bus no longer blocks the way.
@@ -141,12 +142,15 @@ export async function startGame(canvas, hooks = {}) {
   // The morning: 'ready' until Dreko first moves, 'run' while the clock counts down, 'left' while the
   // "bus left" card is up. Then the same day starts over with everything he has learned still known.
   // The week: `day` counts from 0 (Monday). A day repeats until all ten board ('dayWon'), then the next day
-  // starts with more needs. `loop` is the try within the day. After Friday the week is 'won'.
-  const clock = { phase: 'ready', day: 0, loop: 1, total: CLOCK.firstLoop, left: CLOCK.firstLoop, card: 0, paused: false, told: -1, boarded: 0, earned: 0 }
+  // starts with more needs. `loop` is the try within the day: there are WEEK.tries of them, and when the bus
+  // leaves without all ten on the last one the game is 'over' and starts from scratch. After Friday the next
+  // `week` starts, harder: `level` holds how hard this morning is (level.js).
+  let level = levelOf(0, 0)
+  const clock = { phase: 'ready', week: 0, day: 0, loop: 1, total: level.seconds, left: level.seconds, card: 0, paused: false, told: -1, boarded: 0, earned: 0 }
   const names = KIDS.map((k) => k.name)
   const copy = (map) => Object.fromEntries(Object.entries(map).map(([name, list]) => [name, list.slice()]))
   // who needs what today: `deal` is the day's full hand, `needs` is what is still left to do this try
-  let deal = dealDay(names, WEEK.needs[0])
+  let deal = dealDay(names, level.needs)
   let needs = copy(deal)
   let spots = placeDay(deal) // where each of those needs is waited for
   const tellNeeds = () => hooks.onNeeds?.(copy(needs))
@@ -166,7 +170,7 @@ export async function startGame(canvas, hooks = {}) {
     k.at = k.spot.slice()
     k.look = k.kid.flip ? 'front-flip' : 'front'
     // late in the week a kid walks around, so they are not a wall and Dreko has to catch them
-    k.roam = clock.day >= ROAM.fromDay
+    k.roam = level.roam
     k.rest = ROAM.restMs[0] + Math.random() * (ROAM.restMs[1] - ROAM.restMs[0])
     k.solid = !k.roam && !onTile(k.spot)
   }
@@ -178,11 +182,11 @@ export async function startGame(canvas, hooks = {}) {
   for (const k of kids) stand(k)
   fence()
   // The rules log: one plain line every time a rule fires, stamped with the day, the try and the clock.
-  const say = (text) => hooks.onEvent?.({ text, day: clock.day, loop: clock.loop, left: Math.max(0, clock.left) })
+  const say = (text) => hooks.onEvent?.({ text, week: clock.week, day: clock.day, loop: clock.loop, left: Math.max(0, clock.left) })
   const dayLine = () => {
     const all = Object.values(deal)
     const rooms = Object.keys(SPOTS).map((room) => `${PLACES[room].name} ${all.filter((l) => ROOM_OF[l[0]] === room).length}`).join(', ')
-    return `${WEEK.days[clock.day]} starts: ${clock.total} seconds on the clock, ${all.reduce((n, l) => n + l.length, 0)} needs, ${all.filter((l) => l.length > 1).length} kids with two. The needs are dealt new, and every kid waits in the room of their first need: ${rooms}.${clock.day >= ROAM.fromDay ? ` From ${WEEK.days[ROAM.fromDay]} the kids walk around ${ROAM.where === 'house' ? 'the house' : 'their room'}, so Dreko has to catch them.` : ''}`
+    return `${clock.week ? `Week ${clock.week + 1}, ` : ''}${WEEK.days[clock.day]} starts (level ${level.number}): ${clock.total} seconds on the clock, ${WEEK.tries} tries, ${all.reduce((n, l) => n + l.length, 0)} needs, ${all.filter((l) => l.length > 1).length} kids with two. The needs are dealt new, and every kid waits in the room of their first need: ${rooms}.${level.roam ? ` The kids walk around ${ROAM.where === 'house' ? 'the house' : 'their room'} at ${level.roamSpeed.toFixed(2)} tiles a second, so Dreko has to catch them.` : ''}`
   }
   say(dayLine())
   let busy = false // true while a mini task is open: Dreko stands still, the clock keeps running
@@ -192,7 +196,7 @@ export async function startGame(canvas, hooks = {}) {
     const tick = Math.ceil(clock.left * 10)
     if (!force && tick === clock.told) return
     clock.told = tick
-    hooks.onClock?.({ phase: clock.phase, day: clock.day, loop: clock.loop, total: clock.total, left: clock.left, boarded: clock.boarded, earned: clock.earned, scene: !!bus.scene, worry: worry() })
+    hooks.onClock?.({ phase: clock.phase, week: clock.week, day: clock.day, loop: clock.loop, total: clock.total, left: clock.left, boarded: clock.boarded, earned: clock.earned, scene: !!bus.scene, worry: worry() })
   }
   const tellReady = () => {
     const out = {}
@@ -205,17 +209,22 @@ export async function startGame(canvas, hooks = {}) {
     // every kid Dreko got ready buys the next try more time
     clock.earned = CLOCK.perKid * clock.boarded
     clock.left = 0
-    say(`The bus left. ${clock.boarded} of ${kids.length} kids counted. Earned for the next try: ${clock.boarded} kids x ${CLOCK.perKid} seconds = ${clock.earned} seconds.`)
-    clock.phase = 'left'
+    // the last try gone: the game is over and starts from scratch
+    const last = clock.loop >= WEEK.tries
+    say(last
+      ? `The bus left on try ${clock.loop} of ${WEEK.tries}. ${clock.boarded} of ${kids.length} kids counted. No tries left: game over, back to the first Monday.`
+      : `The bus left. ${clock.boarded} of ${kids.length} kids counted. Earned for the next try: ${clock.boarded} kids x ${CLOCK.perKid} seconds = ${clock.earned} seconds. Tries left: ${WEEK.tries - clock.loop}.`)
+    clock.phase = last ? 'over' : 'left'
     dreko.path = null
     busScene()
     tellClock(true)
   }
-  // every kid counted: the day is won, and after Friday so is the week
+  // every kid counted: the day is won. After Friday the next week starts, and it is harder.
   function allAboard() {
     clock.boarded = kids.length
-    clock.phase = clock.day === WEEK.days.length - 1 ? 'won' : 'dayWon'
-    say(`All ten are counted with ${clock.left.toFixed(1)} seconds to spare. ${WEEK.days[clock.day]} is done${clock.phase === 'won' ? ', and so is the week' : `. Next is ${WEEK.days[clock.day + 1]}`}.`)
+    clock.phase = 'dayWon'
+    const [w, d] = dayAfter(clock.week, clock.day)
+    say(`All ten are counted with ${clock.left.toFixed(1)} seconds to spare, on try ${clock.loop} of ${WEEK.tries}. ${WEEK.days[clock.day]} is done${w > clock.week ? `, and so is week ${clock.week + 1}` : ''}. Next is ${WEEK.days[d]}${w > 0 ? ` of week ${w + 1}` : ''}.`)
     dreko.path = null
     busScene()
     tellClock(true)
@@ -262,7 +271,7 @@ export async function startGame(canvas, hooks = {}) {
         return
       }
       say(`${clock.boarded} ${clock.boarded === 1 ? 'kid gets' : 'kids get'} on the bus, one by one.`)
-      if (clock.phase === 'left') return driveOff()
+      if (clock.phase === 'left' || clock.phase === 'over') return driveOff()
       bus.scene = 'nod'
       bus.t = BUS.nodMs
       say('All ten are on. The driver gives Dreko a nod.')
@@ -279,7 +288,7 @@ export async function startGame(canvas, hooks = {}) {
   // when she stops she turns to the house and goes up on her toes for a look. Once the morning is over she
   // comes to her spot and watches the bus.
   function stepMom(dt) {
-    const over = clock.phase === 'left' || clock.phase === 'dayWon' || clock.phase === 'won'
+    const over = clock.phase === 'left' || clock.phase === 'dayWon' || clock.phase === 'over'
     if (over) mom.to = BUS.mom[0]
     const gap = mom.to - mom.at[0]
     let moved = 0
@@ -309,12 +318,13 @@ export async function startGame(canvas, hooks = {}) {
     bus.to = BUS.to
     say('The bus drives off.')
   }
-  // kind: 'retry' the same day again, 'day' the next day, 'fresh' a new week from Monday
+  // kind: 'retry' the same day again, 'day' the next day, 'fresh' the whole game again from the first Monday
   function nextMorning(kind = 'retry') {
-    if (kind === 'fresh') clock.day = 0
-    if (kind === 'day') clock.day += 1
+    if (kind === 'fresh') [clock.week, clock.day] = [0, 0]
+    if (kind === 'day') [clock.week, clock.day] = dayAfter(clock.week, clock.day)
+    level = levelOf(clock.week, clock.day)
     clock.loop = kind === 'retry' ? clock.loop + 1 : 1
-    clock.total = CLOCK.firstLoop + (kind === 'retry' ? clock.earned : 0)
+    clock.total = level.seconds + (kind === 'retry' ? clock.earned : 0)
     clock.left = clock.total
     clock.phase = kind === 'fresh' ? 'ready' : 'run'
     clock.boarded = 0
@@ -322,7 +332,7 @@ export async function startGame(canvas, hooks = {}) {
     if (kind !== 'retry') {
       // a new day: new needs, and more of them
       for (const name in known) delete known[name]
-      deal = dealDay(names, WEEK.needs[clock.day])
+      deal = dealDay(names, level.needs)
       spots = placeDay(deal)
     }
     needs = copy(deal)
@@ -347,7 +357,7 @@ export async function startGame(canvas, hooks = {}) {
     tellClock(true)
     if (kind === 'retry') {
       const n = Object.keys(known).length
-      say(`${WEEK.days[clock.day]} starts over, try ${clock.loop}: ${CLOCK.firstLoop} + ${clock.total - CLOCK.firstLoop} earned = ${clock.total} seconds. Same needs in the same rooms. Dreko remembers what ${n} ${n === 1 ? 'kid needs' : 'kids need'}.`)
+      say(`${WEEK.days[clock.day]} starts over, try ${clock.loop} of ${WEEK.tries}: ${level.seconds} + ${clock.total - level.seconds} earned = ${clock.total} seconds. Same needs in the same rooms. Dreko remembers what ${n} ${n === 1 ? 'kid needs' : 'kids need'}.`)
     } else say(dayLine())
   }
   // a kid whose need is done walks to their place at the bus stop, from wherever they are
@@ -469,12 +479,12 @@ export async function startGame(canvas, hooks = {}) {
 
   function step(dt) {
     let [ix, iy] = input.read()
-    if (busy || clock.phase === 'won') {
+    if (busy || clock.phase === 'over') {
       ix = 0
       iy = 0
       dreko.path = null
     }
-    if (clock.phase === 'left' || clock.phase === 'dayWon') {
+    if (clock.phase === 'left' || clock.phase === 'dayWon' || clock.phase === 'over') {
       // the bus has gone: Dreko stands still while the card is up
       ix = 0
       iy = 0
@@ -601,7 +611,7 @@ export async function startGame(canvas, hooks = {}) {
     const room = roomAt(dreko.at)
     const ease = 1 - Math.exp(-dt / (room ? ROOM_VIEW.slideMs : 220))
     // once the morning is over it looks at the bus stop instead
-    const look = clock.phase === 'left' || clock.phase === 'dayWon' || clock.phase === 'won' ? BUS.cam : room ? roomLook[room] : dreko.at
+    const look = clock.phase === 'left' || clock.phase === 'dayWon' || clock.phase === 'over' ? BUS.cam : room ? roomLook[room] : dreko.at
     const tx = Math.max(2.5, Math.min(W - 2.5, look[0]))
     const ty = Math.max(2.5, Math.min(H - 2.5, look[1]))
     cam.at = [cam.at[0] + (tx - cam.at[0]) * ease, cam.at[1] + (ty - cam.at[1]) * ease]
@@ -686,7 +696,7 @@ export async function startGame(canvas, hooks = {}) {
           } else k.rest = 200
         }
       } else {
-        ;[moved, side, arrived] = advance(k, dt, ROAM.speed)
+        ;[moved, side, arrived] = advance(k, dt, level.roamSpeed)
         if (arrived) {
           k.path = null
           k.rest = ROAM.restMs[0] + Math.random() * (ROAM.restMs[1] - ROAM.restMs[0])
@@ -907,11 +917,12 @@ export async function startGame(canvas, hooks = {}) {
       sendToStop(k)
     },
     playAgain() { nextMorning('fresh') },
-    // Continue on the "bus left" or "day done" card: the same day again, or the next day
+    // Continue on the "bus left", "day done" or "game over" card: the same day again, the next day, or from scratch
     next() {
       if (bus.scene) return
       if (clock.phase === 'left') nextMorning('retry')
       else if (clock.phase === 'dayWon') nextMorning('day')
+      else if (clock.phase === 'over') nextMorning('fresh')
     },
     // a miss in a mini task: his anxiety jumps
     miss() {
@@ -941,14 +952,15 @@ export async function startGame(canvas, hooks = {}) {
       tellNeeds()
       tellKnown()
     },
-    skipToDay(day) {
+    skipToDay(day, week = clock.week) {
+      clock.week = week
       clock.day = day - 1
       nextMorning('day')
     },
     // for tests: look at any place from any distance (the angle never changes); no argument gives the game's camera back
     spy: (at, dist) => (spy = at ? { at, dist } : null),
     // for tests and for the next systems (needs, clock): where things are right now
-    state: () => ({ worry: worry(), drops: drops.length, bus: { x: bus.x, scene: bus.scene }, mom: { at: mom.at.slice(), look: mom.look }, dreko: dreko.at.slice(), place, moving: dreko.moving, known: Object.keys(known), told: { ...known }, rooms: Object.fromEntries(kids.map((k) => [k.kid.name, needs[k.kid.name].length ? ROOM_OF[needs[k.kid.name][0]] : null])), spots: Object.fromEntries(kids.map((k) => [k.kid.name, k.spot.slice()])), plan: JSON.parse(JSON.stringify(spots)), deal: copy(deal), solid: kids.filter((k) => k.state === 'home' && k.solid).map((k) => k.kid.name), at: Object.fromEntries(kids.map((k) => [k.kid.name, k.at.slice()])), clock: { phase: clock.phase, day: clock.day, loop: clock.loop, left: clock.left, total: clock.total, boarded: clock.boarded, earned: clock.earned }, near, needs: copy(needs), kids: Object.fromEntries(kids.map((k) => [k.kid.name, k.state])) }),
+    state: () => ({ worry: worry(), drops: drops.length, bus: { x: bus.x, scene: bus.scene }, mom: { at: mom.at.slice(), look: mom.look }, dreko: dreko.at.slice(), place, moving: dreko.moving, known: Object.keys(known), told: { ...known }, rooms: Object.fromEntries(kids.map((k) => [k.kid.name, needs[k.kid.name].length ? ROOM_OF[needs[k.kid.name][0]] : null])), spots: Object.fromEntries(kids.map((k) => [k.kid.name, k.spot.slice()])), plan: JSON.parse(JSON.stringify(spots)), deal: copy(deal), solid: kids.filter((k) => k.state === 'home' && k.solid).map((k) => k.kid.name), at: Object.fromEntries(kids.map((k) => [k.kid.name, k.at.slice()])), clock: { phase: clock.phase, week: clock.week, day: clock.day, loop: clock.loop, level: { ...level }, left: clock.left, total: clock.total, boarded: clock.boarded, earned: clock.earned }, near, needs: copy(needs), kids: Object.fromEntries(kids.map((k) => [k.kid.name, k.state])) }),
     stop() {
       stopped = true
       input.stop()

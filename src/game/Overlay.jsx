@@ -1,6 +1,7 @@
 // The screen overlay: bus clock, kids on the bus, Dreko's anxiety, a bubble over each kid, the button hints
 // and the need list. It only shows what the game tells it; it holds no game rules of its own.
 import { CLOCK, UI, WEEK } from './config.js'
+import { dayAfter, levelOf } from './level.js'
 import { KIDS } from './family.js'
 import { Icon, InkFilter } from './Icon.jsx'
 import { PLACES } from './house.js'
@@ -18,7 +19,7 @@ const clockText = (seconds) => `${Math.floor(seconds / 60)}:${String(Math.ceil(s
 // helping: the kid Dreko can help right now, if any.
 // bubbleRefs: one ref per kid, in KIDS order; the game moves them every frame.
 export default function Overlay({ place, known, needs, ready, helping, clock, worry, calm, listOpen, onToggleList, onHelp, onPlayAgain, onContinue, bubbleRefs, settings, children }) {
-  const over = clock.phase === 'left' || clock.phase === 'won' || clock.phase === 'dayWon'
+  const over = clock.phase === 'left' || clock.phase === 'over' || clock.phase === 'dayWon'
   const left = (kid) => needs[kid.name] ?? []
   const needOf = (kid) => left(kid)[0]
   const told = (kid) => known[kid.name] ?? 0
@@ -33,7 +34,13 @@ export default function Overlay({ place, known, needs, ready, helping, clock, wo
   }
   const iconOf = (state, kid) => (state === 'ready' ? 'tick' : state === 'known' ? needOf(kid) : 'ask')
   const day = WEEK.days[clock.day]
-  const nextDay = WEEK.days[clock.day + 1]
+  const week = clock.week ?? 0
+  // what comes after this morning, and how hard it is
+  const [nextWeek, nextDayAt] = dayAfter(week, clock.day)
+  const nextDay = WEEK.days[nextDayAt]
+  const nextLevel = levelOf(nextWeek, nextDayAt)
+  const mornings = week * WEEK.days.length + clock.day // mornings Dreko got through before this one
+  const triesLeft = WEEK.tries - clock.loop
   // a kid counts the moment their last need is done; once the bus has gone, this is who got on
   const onBus = over ? clock.boarded : KIDS.filter((kid) => needs[kid.name] && !needs[kid.name].length).length
   const earned = clock.earned || 0
@@ -78,7 +85,7 @@ export default function Overlay({ place, known, needs, ready, helping, clock, wo
             <Icon name="bus" wash="gold" />
             <span className="num">{onBus}/{KIDS.length}</span>
           </div>
-          <p className="place place-day">{day}{clock.loop > 1 ? ` · try ${clock.loop}` : ''}</p>
+          <p className="place place-day">{week > 0 ? `Week ${week + 1} · ` : ''}{day} · try {clock.loop} of {WEEK.tries}</p>
           {place && <p className="place">{place}</p>}
           {children}
         </div>
@@ -101,7 +108,7 @@ export default function Overlay({ place, known, needs, ready, helping, clock, wo
           <div className="panel panel-bus">
             <h2>The bus left</h2>
             <p>{onBus} of {KIDS.length} kids made it.</p>
-            <p>{day} starts over{earned > 0 ? `, with ${earned} more seconds` : ''}.</p>
+            <p>{triesLeft === 1 ? 'Last try' : `${triesLeft} tries left`}. {day} starts over{earned > 0 ? `, with ${earned} more seconds` : ''}.</p>
             <p>Dreko remembers what {learned === 1 ? '1 kid needs' : `${learned} kids need`}.</p>
             <button type="button" className="close again" onClick={onContinue} autoFocus><span className="key key-a">A</span>Continue</button>
           </div>
@@ -112,23 +119,25 @@ export default function Overlay({ place, known, needs, ready, helping, clock, wo
       {clock.phase === 'dayWon' && !clock.scene && (
         <div className="list" role="status">
           <div className="panel panel-bus">
-            <h2>{day} done</h2>
-            <p>All ten made the bus.</p>
-            <p>Next: {nextDay}, with {WEEK.needs[clock.day + 1]} needs.</p>
+            <h2>{nextWeek > week ? `Week ${week + 1} done` : `${day} done`}</h2>
+            <p>All ten made the bus{nextWeek > week ? ', Monday to Friday' : ''}.</p>
+            {/* the words of the week's end are a stand-in for the ending from the game map: the driver nods, mom is watching */}
+            {nextWeek > week && <p>The driver gives Dreko a nod. Across the street, Mom saw the whole thing.</p>}
+            <p>Next: {nextDay}{nextWeek > 0 ? ` of week ${nextWeek + 1}` : ''}, with {nextLevel.needs} needs{nextWeek > 0 ? ` and ${nextLevel.seconds} seconds` : ''}.</p>
             <button type="button" className="close again" onClick={onContinue} autoFocus><span className="key key-a">A</span>Continue</button>
           </div>
         </div>
       )}
 
-      {/* the win. The words are a stand-in for the ending from the game map: the driver nods, mom is watching. */}
-      {clock.phase === 'won' && !clock.scene && (
+      {/* out of tries: the game is over and starts from scratch (Carl, Nov 22). The words are a stand-in. */}
+      {clock.phase === 'over' && !clock.scene && (
         <div className="list" role="status">
           <div className="panel panel-bus">
-            <h2>The week is done</h2>
-            <p>All ten made the bus, Monday to Friday.</p>
-            <p>The driver gives Dreko a nod. Across the street, Mom saw the whole thing.</p>
-            <p>Tomorrow is Saturday. No school.</p>
-            <button type="button" className="close again" onClick={onPlayAgain}>Play again</button>
+            <h2>Game over</h2>
+            <p>The bus left on try {WEEK.tries} of {WEEK.tries}. {onBus} of {KIDS.length} kids made it.</p>
+            <p>Dreko got through {mornings === 1 ? '1 morning' : `${mornings} mornings`}.</p>
+            <p>It all starts again on the first Monday.</p>
+            <button type="button" className="close again" onClick={onContinue} autoFocus><span className="key key-a">A</span>Start over</button>
           </div>
         </div>
       )}

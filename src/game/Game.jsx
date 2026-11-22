@@ -23,7 +23,7 @@ export default function Game() {
   const note = useCallback((event) => {
     const e = typeof event === 'string' ? { text: event, ...(gameRef.current?.state().clock ?? { day: 0, loop: 1, left: CLOCK.firstLoop }) } : event
     const seconds = Math.ceil(e.left)
-    const stamp = `${WEEK.days[e.day].slice(0, 3)}${e.loop > 1 ? ` try ${e.loop}` : ''} ${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`
+    const stamp = `${e.week ? `W${e.week + 1} ` : ''}${WEEK.days[e.day].slice(0, 3)}${e.loop > 1 ? ` try ${e.loop}` : ''} ${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`
     logId.current += 1
     const line = { id: logId.current, stamp, text: e.text }
     setLog((list) => [line, ...list].slice(0, 80))
@@ -35,10 +35,10 @@ export default function Game() {
   const [near, setNear] = useState(null) // the kid Dreko is standing next to and can help
   const [task, setTask] = useState(null) // the kid whose mini task is open
   const [listOpen, setListOpen] = useState(false)
-  const [clock, setClock] = useState({ phase: 'ready', day: 0, loop: 1, total: CLOCK.firstLoop, left: CLOCK.firstLoop, boarded: 0, earned: 0 })
+  const [clock, setClock] = useState({ phase: 'ready', week: 0, day: 0, loop: 1, total: CLOCK.firstLoop, left: CLOCK.firstLoop, boarded: 0, earned: 0 })
   // the newest values, for the key and button handlers that are set up once
   const now = useRef({})
-  now.current = { near, task, listOpen, needs, card: (clock.phase === 'left' || clock.phase === 'dayWon') && !clock.scene }
+  now.current = { near, task, listOpen, needs, card: (clock.phase === 'left' || clock.phase === 'dayWon' || clock.phase === 'over') && !clock.scene }
   const openTask = useCallback(() => {
     const s = now.current
     if (!s.near || s.task || s.listOpen) return
@@ -158,12 +158,13 @@ export default function Game() {
     else sound.stop('tick')
     if (hurry && !hurryWas.current) note(`Last ${CLOCK.hurry} seconds: the clock turns red and the tick-tock starts.`)
     hurryWas.current = hurry
-    if (clock.phase === 'left') sound.play('lose')
+    const lost = clock.phase === 'left' || clock.phase === 'over'
+    if (lost) sound.play('lose')
     else sound.stop('lose', 900)
-    const won = clock.phase === 'won' || clock.phase === 'dayWon'
+    const won = clock.phase === 'dayWon'
     if (won) sound.play('win')
     else sound.stop('win', 900)
-    sound.turn('music', clock.phase === 'left' || won ? 0 : 1, clock.phase === 'left' || won ? 500 : 1200)
+    sound.turn('music', lost || won ? 0 : 1, lost || won ? 500 : 1200)
   }, [hurry, clock.phase])
 
   // Dreko stands still while he helps a kid. The clock keeps running.

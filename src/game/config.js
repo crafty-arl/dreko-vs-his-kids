@@ -34,7 +34,16 @@ export const CLOCK = { firstLoop: 30, perKid: 10, hurry: 10, forgotMs: 1300 }
 // at the weekend. `needs` is how many needs are in the house on each day, so every day is harder than the
 // last. Every kid has a need every day (Carl, Nov 21: "all kids have needs all the needs reset"), so the
 // count starts at ten, and each step up gives more kids a second need. The numbers are a draft to tune.
-export const WEEK = { days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'], needs: [10, 12, 14, 16, 18] }
+// `tries` (Carl, Nov 22): "we only give them 3 tries" to finish a morning. When the bus leaves without all ten on
+// the last try the game is over and it starts from scratch, at the first Monday.
+export const WEEK = { days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'], needs: [10, 12, 14, 16, 18], tries: 3 }
+
+// Past the first Friday (Carl, Nov 22: "the gameplay level continues and increases and it keeps getting
+// difficult"). There is no last week. From week 2 every kid has two needs every day (`needs`), the kids are on
+// the move every day, each morning starts with `lessTime` fewer seconds than the one before, down to
+// `leastTime`, and each week the kids walk `roamFaster` tiles a second faster, up to `roamFastest`.
+// Every number is a draft to tune by playing (src/game/level.js does the sums).
+export const HARDER = { needs: 20, lessTime: 2, leastTime: 16, roamFaster: 0.15, roamFastest: 2.2 }
 
 // Kids on the move (Carl and Tessa, Nov 21): on day 4 and day 5 "the kids should be able to be walking around the
 // house and you have to catch the kid to get that need done". `fromDay` counts from 0, so 3 is Thursday.

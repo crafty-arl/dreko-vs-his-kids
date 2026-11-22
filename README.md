@@ -1,6 +1,6 @@
 # Dreko vs His Kids
 
-Alien dad Dreko has to get his ten kids on the school bus every morning of the school week. Miss the bus, and the day loops.
+Alien dad Dreko has to get his ten kids on the school bus every morning of the school week. Miss the bus, and the day loops. He gets three tries a morning; after the third the game is over and starts from scratch. Past Friday the weeks go on and keep getting harder.
 
 An entry for **Tiny Loop Jam 2026**. The jam window runs from Nov 20, 18:00 UTC to Nov 29, 18:00 UTC. Theme: "Small action. Big change."
 
@@ -23,7 +23,7 @@ An entry for **Tiny Loop Jam 2026**. The jam window runs from Nov 20, 18:00 UTC 
 - One shared walk for the whole family (`src/game/walk.js`): a step bounce, a rock, a lean, a squash on landing, a slow breath when standing, and a paper-card turn. It is code only and uses the art as it is. The **Walk test** button makes every kid pace so the walk can be checked.
 - The **Map** button shows the tile map on top of the picture, for checking walls and doors.
 - The screen overlay (`src/game/Overlay.jsx`): bus clock, kids on the bus, Dreko's anxiety, a bubble over each kid and the need list on Y. A kid's bubble is a question mark until Dreko walks up to them, then it shows their need.
-- The school week (`WEEK` in `src/game/config.js`): each loop is a day, Monday to Friday. A day starts when Dreko first moves and the clock runs down from 30 seconds. If the bus leaves without all ten, the same day starts over: Dreko keeps what he learned, and every kid he got on the bus buys the next try 10 more seconds. When all ten board, the next day starts with new needs and more of them (10, 12, 14, 16, then 18), so more kids need two things. After Friday the week is done. The clock waits while the need list is open.
+- The school week (`WEEK` in `src/game/config.js`): each loop is a day, Monday to Friday. A day starts when Dreko first moves and the clock runs down from 30 seconds. If the bus leaves without all ten, the same day starts over: Dreko keeps what he learned, and every kid he got on the bus buys the next try 10 more seconds. When all ten board, the next day starts with new needs and more of them (10, 12, 14, 16, then 18), so more kids need two things. After Friday the week is done. The clock waits while the need list is open. Since Nov 22 (Carl): a morning has `WEEK.tries` = 3 tries. When the bus leaves without all ten on the third, the game is over and starts again at the first Monday. After Friday the next week starts, and it is harder: `HARDER` in `src/game/config.js` and `src/game/level.js` (every kid has two needs, kids on the move every day, fewer seconds each morning down to a floor, kids a little faster each week). There is no last week.
 - The icon set: 16 painted icons in `public/art/icons/` (ten needs, the question mark, clock, bus, sweat drop, tick and stick). `src/game/Icon.jsx` also holds a hand-inked line version of each as a fallback.
 
 - The mini tasks (`src/game/Task.jsx` and `src/game/tasks/`): stand next to a kid and press A (or E, Space, or the gold **Help** button). Four moves cover every need, and `MOVES` in `src/game/needs.js` says which need uses which. A miss costs time and raises Dreko's anxiety, and the clock keeps running. Each works on a controller, the keyboard and a touch screen.
