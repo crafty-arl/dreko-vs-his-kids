@@ -60,8 +60,7 @@ export async function startGame(canvas, hooks = {}) {
   }
   const still = [
     // furniture is drawn from its front corner, so its card stands a little toward the camera (south-east) of the tile's middle
-    // (`shift` slides a wide thing along the wall so it sits over all of its tiles)
-    ...PROPS.map((p) => ({ id: p.id, at: [p.at[0] + 0.5 + p.front + (p.shift ?? 0), p.at[1] + 0.5 + p.front], level: 0, ...shape(img[p.img], p) })),
+    ...PROPS.map((p) => ({ id: p.id, at: [p.at[0] + 0.5 + p.front + (p.shift?.[0] ?? 0), p.at[1] + 0.5 + p.front + (p.shift?.[1] ?? 0)], level: 0, ...shape(img[p.img], p) })),
     ...SMALL.map((s) => ({ id: s.id, at: s.at, level: s.up, ...shape(img[s.img], s) })),
   ]
   // every kid gets the same walker as Dreko, only sized to their height and a touch quicker

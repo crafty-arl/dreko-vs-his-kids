@@ -64,7 +64,7 @@ export function placeName(x, y) {
 
 // Solid furniture. `at` is its tile, `size` its drawn height in tiles, `front` how far its picture stands toward
 // the camera from the tile's middle (the pictures are drawn from their front corner). `more` lists any other
-// tiles a wide thing covers. A thing whose picture is not painted yet is drawn as a grey labelled box
+// tiles a wide thing covers, and `shift` [x, y] slides its picture so it sits over all of them. A thing whose picture is not painted yet is drawn as a grey labelled box
 // (src/game/art.js LATER). `flip` mirrors a picture so its front faces into the room. The camera looks from the south-east, so the tall things stand against the north and
 // west walls of a room and nothing tall stands in front of a place a kid waits.
 // Which things, and where, is a draft of Nov 21 that Carl said go on. Each thing belongs to a need of its room.
@@ -82,7 +82,7 @@ export const PROPS = [
   { id: 'vanity', at: [8, 1], img: 'vanity', size: 1.8, front: 0.2 },
   { id: 'sink', at: [10, 1], img: 'sink', size: 2.0, front: 0.2 },
   { id: 'toilet', at: [11, 1], img: 'toilet', size: 1.3, front: 0.2 },
-  { id: 'tub', at: [12, 1], more: [[13, 1]], img: 'tub', size: 1.35, front: 0.2, shift: 0.5, flip: true, lean: 0.3 },
+  { id: 'tub', at: [12, 1], more: [[13, 1]], img: 'tub', size: 1.72, front: 0.2, shift: [0.5, 0] },
   { id: 'towels', at: [8, 4], img: 'towels', size: 1.6, front: 0.2, flip: true },
   // Cubby room: the kids sleep in cubbies, not beds. Five stacks of two along the wall is ten cubbies.
   ...[7, 8, 9, 10, 11].map((y, i) => ({ id: 'cubby-' + i, at: [1, y], img: 'cubbies', size: 2.0, front: 0.2, flip: true })),
@@ -90,7 +90,8 @@ export const PROPS = [
   { id: 'desk', at: [5, 7], img: 'desk', size: 1.4, front: 0.2 },
   { id: 'coats', at: [6, 7], img: 'coat-rack', size: 1.9, front: 0.2 },
   // Front hall: permission slip, backpack, show-and-tell, shoes
-  { id: 'shoes', at: [9, 7], img: 'shoe-rack', size: 1.0, front: 0.2, lean: 0.22 },
+  // the shoe rack is two tiles long, so it stands along the west wall by the front door
+  { id: 'shoes', at: [8, 10], more: [[8, 11]], img: 'shoe-rack', size: 1.85, front: 0.2, shift: [0, 0.5], flip: true },
   { id: 'hooks', at: [8, 7], img: 'backpack-hooks', size: 1.9, front: 0.2, flip: true },
   { id: 'hall-table', at: [13, 7], img: 'hall-table', size: 1.15, front: 0.2 },
   { id: 'shelf', at: [12, 7], img: 'show-shelf', size: 2.2, front: 0.2 },
@@ -116,7 +117,7 @@ export const SPOTS = {
   kitchen: mid([[4, 1], [6, 1], [2, 2], [1, 5], [5, 5], [6, 5]]),
   bath: mid([[9, 2], [11, 2], [13, 2], [13, 4], [8, 5], [12, 5]]),
   cubby: mid([[2, 8], [2, 10], [4, 8], [6, 8], [4, 11], [6, 11]]),
-  hall: mid([[8, 8], [9, 8], [12, 8], [13, 9], [8, 11], [13, 11]]),
+  hall: mid([[8, 8], [9, 8], [12, 8], [13, 9], [9, 11], [13, 11]]),
 }
 
 // Every floor tile of a room a kid can walk to (not furniture), or of all four rooms when no room is named.
