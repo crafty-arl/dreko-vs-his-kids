@@ -741,8 +741,9 @@ export async function startGame(canvas, hooks = {}) {
       ...kids.filter((k) => k.state !== 'aboard').map((k) => posed(k.kid.name, k.at, k.art, k.size, k.walker, k.kid.floats ? 0.3 + 0.05 * Math.sin(now / 500) : 0)),
       posed('mom', mom.at, momArt, BUS.momSize, momWalk, 0.09 * Math.sin(Math.min(1, mom.tip / 900) * Math.PI)),
       { id: 'bus', at: [bus.x, BUS.at[1]], level: 0, img: busImg, size: BUS.size, wide: busWide },
-      // the driver sits a hair in front of the bus picture, at its window; his nod is two dips of the head
-      { id: 'driver', at: [bus.x + BUS.driver[0] * Math.SQRT1_2 + 0.04, BUS.at[1] - BUS.driver[0] * Math.SQRT1_2 + 0.04], level: (BUS.driver[1] - 0.1 * nod) * lift, img: driverImg, size: BUS.driverSize, wide: driverWide, roll: -0.22 * nod },
+      // the driver sits a hair behind the bus picture, seen through the open side of its cab (the 1920s bus has
+      // see-through windows), so the cab's frame and the steering wheel are in front of him; his nod is two dips of the head
+      { id: 'driver', at: [bus.x + BUS.driver[0] * Math.SQRT1_2 - 0.04, BUS.at[1] - BUS.driver[0] * Math.SQRT1_2 - 0.04], level: (BUS.driver[1] - 0.1 * nod) * lift, img: driverImg, size: BUS.driverSize, wide: driverWide, roll: -0.22 * nod },
       him,
       ...drops.map((d, i) => {
         // each drop arcs out from his head to one side of the screen and falls

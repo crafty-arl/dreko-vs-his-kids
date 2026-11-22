@@ -59,7 +59,7 @@ export const ROAM = { fromDay: 3, where: 'room', speed: 1.5, restMs: [300, 1100]
 // Everything out there stays black, white and grey (Carl's colour rule). The margin covers the bus's whole drive.
 export const WORLD = { margin: 12, ground: ['#bcb8ad', '#b6b2a7', '#b0aca1'], grassTiles: 3, sky: '#bab9b4' }
 
-export const BUS = { at: [6.5, 15.9], from: -7, to: 24, speed: 9, size: 2.7, comeAt: 10, boardMs: 170, nodMs: 1100, driver: [0.78, 1.42], driverSize: 0.66, mom: [9.6, 17.7], momSize: 1.9, pace: { from: 2.5, to: 12.5, speed: 1.3, restMs: [900, 1900] }, cam: [6.9, 15.5] }
+export const BUS = { at: [6.5, 15.9], from: -7, to: 24, speed: 9, size: 2.7, comeAt: 10, boardMs: 170, nodMs: 1100, driver: [0.65, 1.52], driverSize: 0.55, mom: [9.6, 17.7], momSize: 1.9, pace: { from: 2.5, to: 12.5, speed: 1.3, restMs: [900, 1900] }, cam: [6.9, 15.5] }
 
 // Dreko's anxiety, from 0 (calm) to 1. It climbs with the clock: the part of the try that is gone. Every need
 // he has learned today takes `perLearned` off and every kid counted takes `perCounted` off, so a later try,

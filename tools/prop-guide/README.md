@@ -21,7 +21,7 @@ room is seen from above and turned 45 degrees, so the floor tiles are diamonds.
 
 Draw one single prop for that 2.5D isometric game: [THING].
 
-Draw it from exactly the same camera as the fridge, stove and counter standing along the back wall on the
+Draw it from exactly the same camera as the icebox, stove and sink cabinet standing along the back wall on the
 right of picture 2. It stands against that same wall. Its back is toward the upper right and its front faces
 the lower left. Its long side runs along that wall, from the upper left down to the lower right of the
 picture, at the same slant as that row of furniture. On the floor it covers [FOOTPRINT]. We see its top, its
@@ -42,3 +42,14 @@ Nothing in the prop itself is green.
 that stand in the open, a front-on prompt for flat things that the game stands up as real sheets (the fence, the
 washing line), and a straight-from-above prompt for the grass. The grass picture had its big soft blotches taken
 out and its edges blended so that it repeats without a pattern; the fence was cropped to a whole number of pickets.
+
+## 1920s (Nov 22)
+
+Carl: "the props need to be more 1920s". Twelve things were repainted as their 1920s selves (icebox, cast iron
+range, sink cabinet, tin lunch pails, pedestal sink, high-tank toilet, school desk, satchel hooks, boot rack, toy
+shelf, bus stop post, and the wooden school bus from his photo). Every new prompt says "as it would have looked in a
+family home in the 1920s" and "nothing electric and nothing made of plastic". The prompts are in `props-1920s-prompts.md`.
+`camera-guide.png` was retaken with the new kitchen, so it no longer shows anything modern. The files keep their old
+names in `public/art/` (the icebox is `fridge.webp`, the range is `stove.webp`, the cabinet is `counter.webp`).
+The bus has see-through windows; the painted seat was cleared out of its cab so the driver's card can sit behind the
+bus picture and show through the cab's open side.
