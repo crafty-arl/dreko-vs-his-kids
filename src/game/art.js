@@ -15,6 +15,9 @@ const LATER = {
   cubbies: [0.55, 'CUBBIES'], 'sock-basket': [1, 'SOCKS'], desk: [0.9, 'DESK'], 'coat-rack': [0.5, 'COATS'],
   'shoe-rack': [1.1, 'SHOES'], 'backpack-hooks': [0.6, 'BACKPACKS'], 'hall-table': [0.9, 'SLIP TABLE'], 'show-shelf': [0.5, 'SHOW SHELF'],
   'bus-stop-sign': [0.35, 'BUS STOP'], mailbox: [0.6, 'MAIL'],
+  // the still world around the home, painted on Nov 21
+  tree: [0.8, 'TREE'], bush: [1.2, 'BUSH'], 'house-a': [1.05, 'HOUSE A'], 'house-b': [1.05, 'HOUSE B'], 'street-lamp': [0.3, 'LAMP'],
+  hydrant: [0.8, 'HYDRANT'], 'trash-cans': [1.2, 'TRASH'], fence: [2.1, 'FENCE'], clothesline: [1.8, 'WASHING LINE'],
 } // name: [width for a height of 1, label]
 const PX = 128 // one tile's picture is this many pixels across
 
@@ -42,6 +45,8 @@ export async function loadArt() {
     ...CUTOUTS.map(async (n) => (img[n] = await loadImage(base + n + '.webp'))),
     ...Object.keys(LATER).map(async (n) => (img[n] = await loadImage(base + n + '.webp').catch(() => standIn(...LATER[n])))),
   ])
+  // the grass of the still world: until its picture exists the ground is plain grey
+  img['f-grass'] = await loadImage(base + 'f-grass.jpg').catch(() => null)
   // until Mom's back view exists, her front view stands in for it
   if (img['mom-back'].standIn && !img.mom.standIn) img['mom-back'] = img.mom
   return img
@@ -185,7 +190,14 @@ export function buildHouse(img, ink) {
   // Outside the house: the pavement, the road and the far pavement run on past both ends of the house, and
   // the rest is plain ground. The house keeps its own tile numbers; the engine's map starts `M` tiles before it.
   const M = WORLD.margin
-  const ground = (x, y) => (y >= 13 && y < H ? floorOf(x, y) : plain(WORLD.ground[hash(x, y) % WORLD.ground.length]))
+  // the grass picture covers `G` x `G` tiles, so the eye does not catch it repeating
+  const G = WORLD.grassTiles
+  const part = (n) => (((n % G) + G) % G) / G
+  const ground = (x, y) => {
+    if (y >= 13 && y < H) return floorOf(x, y)
+    if (img['f-grass']) return piece('f-grass', part(x), part(x) + 1 / G, part(y), part(y) + 1 / G, 0, false)
+    return plain(WORLD.ground[hash(x, y) % WORLD.ground.length])
+  }
 
   const levels = {}
   for (const level of [0, 1]) {

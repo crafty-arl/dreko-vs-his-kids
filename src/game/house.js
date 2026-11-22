@@ -130,5 +130,54 @@ export function floorTiles(room) {
   return out
 }
 
+// The still world around the home (Carl, Nov 21: "a still world around the home"). Nothing out here moves and
+// nobody walks here. Places are in the house's own tile numbers, so they run below 0 and past the house.
+// `at` is the point on the ground where the bottom middle of the picture stands, `size` its drawn height in
+// tiles, `flip` mirrors it, `shade` puts a soft round shadow of that size on the ground under it. `narrow`
+// squeezes a picture sideways: the houses were painted from a little lower than the game's camera, and a
+// squeeze brings the slant of their walls closer to the slant of the ground.
+// The camera looks from the south-east: tall things stand behind the house and beside it, where they hide
+// nothing, and across the street (toward the camera) there are only low things, so Mom and the road stay in view.
+// Which things, and where, is a draft of Nov 21 that Carl said go on.
+export const OUTSIDE = [
+  // neighbour houses: two behind the back fence, one next door on each side
+  { id: 'n-house-1', at: [2.6, -6.4], img: 'house-a', size: 6.4, narrow: 0.9 },
+  { id: 'n-house-2', at: [14.6, -6.6], img: 'house-b', size: 6.4, narrow: 0.9 },
+  { id: 'w-house', at: [-5.6, 10.4], img: 'house-b', size: 6.4, narrow: 0.9 },
+  { id: 'e-house', at: [25.6, 10.4], img: 'house-a', size: 6.4, narrow: 0.9 },
+  // trees: behind the back walls, in the side yards, and far across the street
+  { id: 'tree-1', at: [-2.6, -2.4], img: 'tree', size: 4.2, shade: 1.1 },
+  { id: 'tree-2', at: [4.4, -2.2], img: 'tree', size: 3.8, flip: true, shade: 1 },
+  { id: 'tree-3', at: [12.6, -2.6], img: 'tree', size: 4.2, shade: 1.1 },
+  { id: 'tree-4', at: [17.6, -1.6], img: 'tree', size: 3.6, flip: true, shade: 0.95 },
+  { id: 'tree-5', at: [-2.4, 8.6], img: 'tree', size: 3.9, flip: true, shade: 1 },
+  { id: 'tree-6', at: [-6.5, 21.6], img: 'tree', size: 3.6, shade: 0.95 },
+  { id: 'tree-7', at: [20.5, 21.4], img: 'tree', size: 3.6, flip: true, shade: 0.95 },
+  // bushes: along the side walls of the house and along the far pavement
+  { id: 'bush-1', at: [-1.2, 3.2], img: 'bush', size: 1.0 },
+  { id: 'bush-2', at: [-1.3, 5.6], img: 'bush', size: 0.9, flip: true },
+  { id: 'bush-3', at: [16.1, 2.6], img: 'bush', size: 1.0 },
+  { id: 'bush-4', at: [16.2, 6.4], img: 'bush', size: 0.9, flip: true },
+  { id: 'bush-5', at: [16.0, 8.8], img: 'bush', size: 1.0 },
+  { id: 'bush-6', at: [3.4, 19.9], img: 'bush', size: 0.95 },
+  { id: 'bush-7', at: [5.2, 20.1], img: 'bush', size: 0.85, flip: true },
+  { id: 'bush-8', at: [12.6, 19.9], img: 'bush', size: 0.95 },
+  { id: 'bush-9', at: [-2.5, 20.0], img: 'bush', size: 0.9, flip: true },
+  // street things
+  { id: 'lamp-1', at: [-3.2, 13.5], img: 'street-lamp', size: 3.4 },
+  { id: 'lamp-2', at: [18.6, 13.5], img: 'street-lamp', size: 3.4 },
+  { id: 'lamp-3', at: [14.6, 18.5], img: 'street-lamp', size: 3.4, flip: true },
+  { id: 'hydrant', at: [15.8, 14.3], img: 'hydrant', size: 0.75 },
+  { id: 'trash-cans', at: [16.4, 11.6], img: 'trash-cans', size: 1.15 },
+]
+// Flat things that stand as real upright sheets between two points: the picture is painted straight from the
+// front and repeats every `every` tiles. `tall` is its height in floors.
+export const SHEETS = [
+  { id: 'fence-back', img: 'fence', from: [-4.5, -4.5], to: [19.5, -4.5], tall: 0.95, every: 1.93 },
+  { id: 'fence-west', img: 'fence', from: [-4.5, -4.5], to: [-4.5, 13], tall: 0.95, every: 1.93 },
+  { id: 'fence-east', img: 'fence', from: [19.5, -4.5], to: [19.5, 13], tall: 0.95, every: 1.93 },
+  { id: 'clothesline', img: 'clothesline', from: [6.8, -2.4], to: [10.66, -2.4], tall: 1.6, every: 3.86 },
+]
+
 // The road and the far pavement start at this row. Nobody in the family walks there: the road is for the bus.
 export const ROAD_Y = 15

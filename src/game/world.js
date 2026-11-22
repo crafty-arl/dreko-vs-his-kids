@@ -4,7 +4,7 @@ import { GMThree, GMTiles } from '../engine/index.js'
 import { buildHouse, card, cutout, loadArt } from './art.js'
 import { ANXIETY, BUS, CAMERA, CLOCK, DREKO, GOLD, INK, PAPER, ROAM, ROOM_VIEW, TILE, WALK, WEEK, WORLD } from './config.js'
 import { KIDS, kidArt } from './family.js'
-import { H, PLACES, PROPS, ROAD_Y, ROWS, SMALL, SOLID, SPOTS, W, floorTiles, placeName, zone } from './house.js'
+import { H, OUTSIDE, PLACES, PROPS, ROAD_Y, ROWS, SHEETS, SMALL, SOLID, SPOTS, W, floorTiles, placeName, zone } from './house.js'
 import { createInput } from './input.js'
 import { ASK_DISTANCE, MOVES, MOVE_NAMES, NEEDS, ROOM_OF, dealDay } from './needs.js'
 import { createWalker, poseOf, stepWalker } from './walk.js'
@@ -48,7 +48,7 @@ export async function startGame(canvas, hooks = {}) {
     ...engine,
     setThings: (list) => engine.setThings(moved(list)),
     setMarks: (list) => engine.setMarks(moved(list)),
-    render: (o) => engine.render({ ...o, at: [o.at[0] + M, o.at[1] + M, o.at[2]], sky: WORLD.ground[1] }), // past the map's edge the ground's grey goes on
+    render: (o) => engine.render({ ...o, at: [o.at[0] + M, o.at[1] + M, o.at[2]], sky: WORLD.sky }), // past the map's edge the grass's grey goes on
     pick: (px, py) => {
       const hit = engine.pick(px, py)
       return hit && { ...hit, x: hit.x - M, y: hit.y - M }
@@ -69,15 +69,34 @@ export async function startGame(canvas, hooks = {}) {
   // the lower left (right for a thing on the north wall), and a thing on the west wall has to face the other way.
   // `lean` turns a picture that was painted too front-on to lie along its wall (art.js); the card grows taller
   // by the lean, so its size grows with it and the thing itself stays the size it was.
-  const shape = (im, { flip, lean = 0, size }) => {
+  const shape = (im, { flip, lean = 0, size, narrow = 1 }) => {
     const [c, wide] = card(im, flip && !im.standIn, im.standIn ? 0 : lean)
-    return { img: c, wide, size: (size * c.height) / im.height }
+    return { img: c, wide: wide * narrow, size: (size * c.height) / im.height }
   }
   const still = [
     // furniture is drawn from its front corner, so its card stands a little toward the camera (south-east) of the tile's middle
     ...PROPS.map((p) => ({ id: p.id, at: [p.at[0] + 0.5 + p.front + (p.shift?.[0] ?? 0), p.at[1] + 0.5 + p.front + (p.shift?.[1] ?? 0)], level: 0, ...shape(img[p.img], p) })),
     ...SMALL.map((s) => ({ id: s.id, at: s.at, level: s.up, ...shape(img[s.img], s) })),
+    // the still world around the home: trees, bushes, neighbour houses, street things
+    ...OUTSIDE.map((o) => ({ id: o.id, at: o.at, level: 0, ...shape(img[o.img], o) })),
   ]
+  const stillMarks = OUTSIDE.filter((o) => o.shade).map((o) => ({ at: o.at, h: 0, r: o.shade, color: INK, opacity: 0.13 }))
+  // fences and the washing line are real upright sheets in the scene, so they run true along the ground
+  for (const sh of SHEETS) {
+    const im = img[sh.img]
+    const [dx, dy] = [sh.to[0] - sh.from[0], sh.to[1] - sh.from[1]]
+    const long = Math.hypot(dx, dy)
+    const tex = new THREE.CanvasTexture(im)
+    tex.colorSpace = THREE.SRGBColorSpace
+    tex.wrapS = THREE.RepeatWrapping
+    tex.repeat.x = long / sh.every
+    tex.anisotropy = 8
+    const sheet = new THREE.Mesh(new THREE.PlaneGeometry(long, sh.tall), new THREE.MeshBasicMaterial({ map: tex, alphaTest: 0.5, alphaToCoverage: true, side: THREE.DoubleSide }))
+    sheet.position.set((sh.from[0] + sh.to[0]) / 2 + M, sh.tall / 2, (sh.from[1] + sh.to[1]) / 2 + M)
+    sheet.rotation.y = -Math.atan2(dy, dx)
+    sheet.raycast = () => {} // a tap goes through it to the ground
+    engine.scene.add(sheet)
+  }
   // every kid gets the same walker as Dreko, only sized to their height and a touch quicker
   const kids = KIDS.map((k, i) => {
     const size = DREKO.height * k.tall
@@ -426,6 +445,7 @@ export async function startGame(canvas, hooks = {}) {
     return [key, [(x0 + x1 + 1) / 2 + ROOM_VIEW.shift[0], (y0 + y1 + 1) / 2 + ROOM_VIEW.shift[1]]]
   }))
   const cam = { at: (roomLook[roomAt(dreko.at)] ?? dreko.at).slice() }
+  let spy = null // for tests: look at a place from a distance of your choosing
   let size = { w: 1, h: 1 }
   let place = ''
   let stopped = false
@@ -735,9 +755,10 @@ export async function startGame(canvas, hooks = {}) {
     view.setMarks([
       ...kids.filter((k) => k.state !== 'aboard').map(({ at, size: s }) => ({ at, h: 0, r: s * 0.16, color: INK, opacity: 0.16 })),
       { at: dreko.at, h: 0, r: 0.3, color: INK, opacity: 0.2 },
+      ...stillMarks,
     ])
     const tall = size.h > size.w
-    view.render({ mode: 'orbit', angle: CAMERA.angle, tilt: CAMERA.tilt, upTo: 1, at: [cam.at[0], cam.at[1], 0], dist: cam.dist ?? (tall ? CAMERA.distTall : CAMERA.distWide) })
+    view.render({ mode: 'orbit', angle: CAMERA.angle, tilt: CAMERA.tilt, upTo: 1, at: spy ? [spy.at[0], spy.at[1], 0] : [cam.at[0], cam.at[1], 0], dist: spy?.dist ?? cam.dist ?? (tall ? CAMERA.distTall : CAMERA.distWide) })
     if (mapCanvas) drawMap()
 
     // where the top of each kid's head is on screen, for the bubbles
@@ -923,6 +944,8 @@ export async function startGame(canvas, hooks = {}) {
       clock.day = day - 1
       nextMorning('day')
     },
+    // for tests: look at any place from any distance (the angle never changes); no argument gives the game's camera back
+    spy: (at, dist) => (spy = at ? { at, dist } : null),
     // for tests and for the next systems (needs, clock): where things are right now
     state: () => ({ worry: worry(), drops: drops.length, bus: { x: bus.x, scene: bus.scene }, mom: { at: mom.at.slice(), look: mom.look }, dreko: dreko.at.slice(), place, moving: dreko.moving, known: Object.keys(known), told: { ...known }, rooms: Object.fromEntries(kids.map((k) => [k.kid.name, needs[k.kid.name].length ? ROOM_OF[needs[k.kid.name][0]] : null])), spots: Object.fromEntries(kids.map((k) => [k.kid.name, k.spot.slice()])), plan: JSON.parse(JSON.stringify(spots)), deal: copy(deal), solid: kids.filter((k) => k.state === 'home' && k.solid).map((k) => k.kid.name), at: Object.fromEntries(kids.map((k) => [k.kid.name, k.at.slice()])), clock: { phase: clock.phase, day: clock.day, loop: clock.loop, left: clock.left, total: clock.total, boarded: clock.boarded, earned: clock.earned }, near, needs: copy(needs), kids: Object.fromEntries(kids.map((k) => [k.kid.name, k.state])) }),
     stop() {

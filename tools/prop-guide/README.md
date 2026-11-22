@@ -35,3 +35,10 @@ eyes, no arms, no people, no characters. No text, no letters, no numbers, no log
 Background: one flat pure green (#00FF00) from edge to edge. No white paper, no frame, no glow, no gradient.
 Nothing in the prop itself is green.
 ```
+
+## Outdoor things
+
+`world-prompts.md` holds the prompts for the still world around the home (Nov 21): the same 2.5D prompt for things
+that stand in the open, a front-on prompt for flat things that the game stands up as real sheets (the fence, the
+washing line), and a straight-from-above prompt for the grass. The grass picture had its big soft blotches taken
+out and its edges blended so that it repeats without a pattern; the fence was cropped to a whole number of pickets.
