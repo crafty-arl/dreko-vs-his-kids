@@ -2,7 +2,7 @@
 import * as THREE from 'three'
 import { GMThree, GMTiles } from '../engine/index.js'
 import { buildHouse, card, cutout, loadArt } from './art.js'
-import { ANXIETY, BUS, CAMERA, CLOCK, DREKO, GOLD, INK, PAPER, ROAM, ROOM_VIEW, TILE, WALK, WEEK, WORLD } from './config.js'
+import { ANXIETY, BUS, CAMERA, CLOCK, DREKO, GOLD, INK, PAPER, ROAM, ROOM_VIEW, TILE, TUTOR, WALK, WEEK, WORLD } from './config.js'
 import { KIDS, kidArt } from './family.js'
 import { H, OUTSIDE, PLACES, PROPS, ROAD_Y, ROWS, SHEETS, SMALL, SOLID, SPOTS, W, floorTiles, placeName, zone } from './house.js'
 import { createInput } from './input.js'
@@ -192,12 +192,13 @@ export async function startGame(canvas, hooks = {}) {
   let busy = false // true while a mini task is open: Dreko stands still, the clock keeps running
   let hold = false // true while the title screen is up: Dreko stands still, so the clock does not start
   let held = null // the kid that task is for: they stand still too
+  let tutorial = false // true in How to play: a practice morning, and the bus clock does not run
   let near = null
   const tellClock = (force) => {
     const tick = Math.ceil(clock.left * 10)
     if (!force && tick === clock.told) return
     clock.told = tick
-    hooks.onClock?.({ phase: clock.phase, week: clock.week, day: clock.day, loop: clock.loop, total: clock.total, left: clock.left, boarded: clock.boarded, earned: clock.earned, scene: !!bus.scene, worry: worry() })
+    hooks.onClock?.({ phase: clock.phase, week: clock.week, day: clock.day, loop: clock.loop, total: clock.total, left: clock.left, boarded: clock.boarded, earned: clock.earned, scene: !!bus.scene, worry: worry(), tutorial })
   }
   const tellReady = () => {
     const out = {}
@@ -319,21 +320,23 @@ export async function startGame(canvas, hooks = {}) {
     bus.to = BUS.to
     say('The bus drives off.')
   }
-  // kind: 'retry' the same day again, 'day' the next day, 'fresh' the whole game again from the first Monday
+  // kind: 'retry' the same day again, 'day' the next day, 'fresh' the whole game again from the first Monday,
+  // 'tutorial' the practice morning of How to play
   function nextMorning(kind = 'retry') {
-    if (kind === 'fresh') [clock.week, clock.day] = [0, 0]
+    tutorial = kind === 'tutorial'
+    if (kind === 'fresh' || tutorial) [clock.week, clock.day] = [0, 0]
     if (kind === 'day') [clock.week, clock.day] = dayAfter(clock.week, clock.day)
     level = levelOf(clock.week, clock.day)
     clock.loop = kind === 'retry' ? clock.loop + 1 : 1
     clock.total = level.seconds + (kind === 'retry' ? clock.earned : 0)
     clock.left = clock.total
-    clock.phase = kind === 'fresh' ? 'ready' : 'run'
+    clock.phase = kind === 'fresh' || tutorial ? 'ready' : 'run'
     clock.boarded = 0
     clock.earned = 0
     if (kind !== 'retry') {
       // a new day: new needs, and more of them
       for (const name in known) delete known[name]
-      deal = dealDay(names, level.needs)
+      deal = tutorial ? Object.fromEntries(names.map((name) => [name, (TUTOR.needs[name] ?? []).slice()])) : dealDay(names, level.needs)
       spots = placeDay(deal)
     }
     needs = copy(deal)
@@ -349,6 +352,16 @@ export async function startGame(canvas, hooks = {}) {
     dreko.face = 'front'
     dreko.flip = false
     for (const k of kids) stand(k)
+    // in the practice morning the kids with nothing to do are at the bus stop already
+    if (tutorial) {
+      for (const k of kids) {
+        if (needs[k.kid.name].length) continue
+        k.at = stopSpot(k.slot)
+        k.state = 'stop'
+        k.roam = false
+        k.look = 'front'
+      }
+    }
     fence()
     near = null
     hooks.onNear?.(null)
@@ -359,7 +372,8 @@ export async function startGame(canvas, hooks = {}) {
     if (kind === 'retry') {
       const n = Object.keys(known).length
       say(`${WEEK.days[clock.day]} starts over, try ${clock.loop} of ${WEEK.tries}: ${level.seconds} + ${clock.total - level.seconds} earned = ${clock.total} seconds. Same needs in the same rooms. Dreko remembers what ${n} ${n === 1 ? 'kid needs' : 'kids need'}.`)
-    } else say(dayLine())
+    } else if (tutorial) say('How to play: a practice morning. The bus clock is stopped. Seven kids are at the bus stop already, three still need Dreko.')
+    else say(dayLine())
   }
   // a kid whose need is done walks to their place at the bus stop, from wherever they are
   function sendToStop(k) {
@@ -498,7 +512,7 @@ export async function startGame(canvas, hooks = {}) {
         say('Dreko moved, so the bus clock starts.')
       }
     } else if (clock.phase === 'run' && !clock.paused) {
-      clock.left -= dt / 1000
+      if (!tutorial) clock.left -= dt / 1000 // the practice morning has no clock
       stress = Math.max(0, stress - (ANXIETY.settle * dt) / 1000)
       // sweat flies off him when he is very anxious, faster the worse it is
       const w = worry()
@@ -919,11 +933,13 @@ export async function startGame(canvas, hooks = {}) {
       sendToStop(k)
     },
     playAgain() { nextMorning('fresh') },
+    // How to play: the practice morning (src/game/Tutorial.jsx talks the player through it)
+    startTutorial() { nextMorning('tutorial') },
     // Continue on the "bus left", "day done" or "game over" card: the same day again, the next day, or from scratch
     next() {
       if (bus.scene) return
       if (clock.phase === 'left') nextMorning('retry')
-      else if (clock.phase === 'dayWon') nextMorning('day')
+      else if (clock.phase === 'dayWon') nextMorning(tutorial ? 'fresh' : 'day') // after the practice morning the real game starts
       else if (clock.phase === 'over') nextMorning('fresh')
     },
     // a miss in a mini task: his anxiety jumps
@@ -962,7 +978,7 @@ export async function startGame(canvas, hooks = {}) {
     // for tests: look at any place from any distance (the angle never changes); no argument gives the game's camera back
     spy: (at, dist) => (spy = at ? { at, dist } : null),
     // for tests and for the next systems (needs, clock): where things are right now
-    state: () => ({ worry: worry(), drops: drops.length, bus: { x: bus.x, scene: bus.scene }, mom: { at: mom.at.slice(), look: mom.look }, dreko: dreko.at.slice(), place, moving: dreko.moving, known: Object.keys(known), told: { ...known }, rooms: Object.fromEntries(kids.map((k) => [k.kid.name, needs[k.kid.name].length ? ROOM_OF[needs[k.kid.name][0]] : null])), spots: Object.fromEntries(kids.map((k) => [k.kid.name, k.spot.slice()])), plan: JSON.parse(JSON.stringify(spots)), deal: copy(deal), solid: kids.filter((k) => k.state === 'home' && k.solid).map((k) => k.kid.name), at: Object.fromEntries(kids.map((k) => [k.kid.name, k.at.slice()])), clock: { phase: clock.phase, week: clock.week, day: clock.day, loop: clock.loop, level: { ...level }, left: clock.left, total: clock.total, boarded: clock.boarded, earned: clock.earned }, near, needs: copy(needs), kids: Object.fromEntries(kids.map((k) => [k.kid.name, k.state])) }),
+    state: () => ({ worry: worry(), drops: drops.length, bus: { x: bus.x, scene: bus.scene }, mom: { at: mom.at.slice(), look: mom.look }, dreko: dreko.at.slice(), place, moving: dreko.moving, known: Object.keys(known), told: { ...known }, rooms: Object.fromEntries(kids.map((k) => [k.kid.name, needs[k.kid.name].length ? ROOM_OF[needs[k.kid.name][0]] : null])), spots: Object.fromEntries(kids.map((k) => [k.kid.name, k.spot.slice()])), plan: JSON.parse(JSON.stringify(spots)), deal: copy(deal), solid: kids.filter((k) => k.state === 'home' && k.solid).map((k) => k.kid.name), at: Object.fromEntries(kids.map((k) => [k.kid.name, k.at.slice()])), clock: { tutorial, phase: clock.phase, week: clock.week, day: clock.day, loop: clock.loop, level: { ...level }, left: clock.left, total: clock.total, boarded: clock.boarded, earned: clock.earned }, near, needs: copy(needs), kids: Object.fromEntries(kids.map((k) => [k.kid.name, k.state])) }),
     stop() {
       stopped = true
       input.stop()

@@ -2,11 +2,12 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { CLOCK, WEEK } from './config.js'
 import { KIDS } from './family.js'
 import Overlay, { overlayClass } from './Overlay.jsx'
-import { addRun, readBest } from './scores.js'
+import { addRun, clearBest, readBest } from './scores.js'
 import { createSound } from './sound.js'
 import { MOVES, MOVE_NAMES, NEEDS } from './needs.js'
 import Task from './Task.jsx'
 import Title from './Title.jsx'
+import { Coach, coach } from './Tutorial.jsx'
 import { startGame } from './world.js'
 
 // The game screen: one canvas for the house, and the overlay on top.
@@ -18,6 +19,7 @@ export default function Game() {
   const bubbleRefs = useRef([])
   const soundRef = useRef(null)
   const [soundOn, setSoundOn] = useState(true)
+  const [groups, setGroups] = useState({ music: true, sounds: true }) // Settings: the music and the sounds, each on or off
   // The rules log: a line for every rule that fires, newest first. Open the page with ?log to start with it showing.
   const [log, setLog] = useState([])
   const [showLog, setShowLog] = useState(() => new URLSearchParams(window.location.search).has('log'))
@@ -38,8 +40,11 @@ export default function Game() {
   const [task, setTask] = useState(null) // the kid whose mini task is open
   const [listOpen, setListOpen] = useState(false)
   const [clock, setClock] = useState({ phase: 'ready', week: 0, day: 0, loop: 1, total: CLOCK.firstLoop, left: CLOCK.firstLoop, boarded: 0, earned: 0 })
-  // The title screen is up when the page opens. Open the page with ?notitle to go straight to the house.
-  const [title, setTitle] = useState(() => !new URLSearchParams(window.location.search).has('notitle'))
+  // The title screen is up when the page opens: 'home', or its 'settings' or 'credits' page, or null once the
+  // game is on. Open the page with ?notitle to go straight to the house.
+  const [title, setTitle] = useState(() => (new URLSearchParams(window.location.search).has('notitle') ? null : 'home'))
+  // How to play: has the player opened and closed the need list yet (one of its steps)
+  const [listSeen, setListSeen] = useState(false)
   // Your three best tries, kept on this device. bestAt is where the game that just ended landed (-1 = not on the board).
   const [best, setBest] = useState(readBest)
   const [bestAt, setBestAt] = useState(-1)
@@ -69,6 +74,35 @@ export default function Game() {
   // Walk test: every kid paces on the spot so the shared walk can be checked. Open the page with ?walktest to start in it.
   const [walkTest, setWalkTest] = useState(() => new URLSearchParams(window.location.search).has('walktest'))
 
+  // How to play on the title screen: the practice morning starts, and the coach talks the player through it
+  const startTutorial = useCallback(() => {
+    gameRef.current?.startTutorial()
+    setListSeen(false)
+    setListOpen(false)
+    setTask(null)
+    setTitle(null)
+  }, [])
+  // leave the practice morning (or its last card) for the title screen
+  const toTitle = useCallback(() => {
+    gameRef.current?.playAgain()
+    setListOpen(false)
+    setTask(null)
+    setTitle('home')
+  }, [])
+  // The title screen and its pages with a controller: the D-pad or stick moves between the buttons, A presses
+  // the one that is lit, B goes back, Y is How to play and Start starts.
+  const menuButton = useCallback((button) => {
+    const view = now.current.title
+    const buttons = [...document.querySelectorAll('.title .panel button:not(:disabled)')]
+    const at = buttons.indexOf(document.activeElement)
+    if (button === 'down' || button === 'right') buttons[(at + 1) % buttons.length]?.focus()
+    else if (button === 'up' || button === 'left') buttons[(Math.max(at, 0) - 1 + buttons.length) % buttons.length]?.focus()
+    else if (button === 'a') (at >= 0 ? buttons[at] : view === 'home' ? buttons[0] : null)?.click()
+    else if (button === 'b' && view !== 'home') setTitle('home')
+    else if (button === 'y' && view === 'home') startTutorial()
+    else if (button === 'start' && view === 'home') setTitle(null)
+  }, [startTutorial])
+
   useEffect(() => {
     let cancelled = false
     let game = null
@@ -90,10 +124,7 @@ export default function Game() {
       })
     }
     const onButton = (button) => {
-      if (now.current.title) {
-        if (button === 'a') setTitle(false) // Start
-        return
-      }
+      if (now.current.title) return menuButton(button)
       if (button === 'a') {
         if (now.current.card) gameRef.current?.next() // Continue on the card between tries and days
         else openTask()
@@ -165,12 +196,24 @@ export default function Game() {
     note(`Game over after ${mornings === 1 ? '1 morning' : `${mornings} mornings`}. ${board.place >= 0 ? `It is number ${board.place + 1} of your three best tries.` : 'It is not one of your three best tries.'}`)
   }, [clock.phase])
 
+  // How to play: opening the need list and closing it again is one of the steps
+  const listOpened = useRef(false)
+  useEffect(() => {
+    if (!clock.tutorial) {
+      listOpened.current = false
+      return
+    }
+    if (listOpen) listOpened.current = true
+    else if (listOpened.current) setListSeen(true)
+  }, [listOpen, clock.tutorial])
+
   // Sound: made once. It stays silent until the player's first tap or key, as browsers ask.
   useEffect(() => {
     const sound = createSound()
     soundRef.current = sound
     window.__drekoSound = sound // for tests
     setSoundOn(!sound.muted)
+    setGroups({ music: !sound.muted && sound.on.music, sounds: !sound.muted && sound.on.sounds })
     sound.play('music', { loop: true }) // the menu music runs through the whole game, as Carl asked on Nov 21
     return () => {
       sound.end()
@@ -214,10 +257,15 @@ export default function Game() {
       if (now.current.task) return // the mini task reads the keys while it is open
       const key = e.key.toLowerCase()
       if (now.current.title) {
-        // Start on the title screen
-        if ((key === 'e' || key === ' ' || key === 'enter') && !e.repeat) {
+        // The title screen: E starts, Y is How to play, B or Escape goes back a page. Enter and Space press
+        // the button that is lit, as in any page; with none lit they start the game.
+        const onButtonNow = document.activeElement?.tagName === 'BUTTON'
+        if (now.current.title !== 'home') {
+          if (key === 'escape' || key === 'b') setTitle('home')
+        } else if (key === 'y') startTutorial()
+        else if ((key === 'e' || ((key === ' ' || key === 'enter') && !onButtonNow)) && !e.repeat) {
           e.preventDefault()
-          setTitle(false)
+          setTitle(null)
         }
         return
       }
@@ -241,6 +289,29 @@ export default function Game() {
     return () => window.removeEventListener('keydown', anyKey)
   }, [])
 
+  // Settings: the music and the sounds each have a switch. A switch shows On only when it can really be heard.
+  const syncSound = () => {
+    const sound = soundRef.current
+    if (!sound) return
+    setSoundOn(!sound.muted)
+    setGroups({ music: !sound.muted && sound.on.music, sounds: !sound.muted && sound.on.sounds })
+  }
+  const flipSound = (group) => {
+    const sound = soundRef.current
+    if (!sound) return
+    const want = !(!sound.muted && sound.on[group])
+    if (sound.muted) {
+      // all sound was off: turn it back on with only this one switch on
+      sound.setOn(group === 'music' ? 'sounds' : 'music', false)
+      sound.setMuted(false)
+    }
+    sound.setOn(group, want)
+    syncSound()
+  }
+
+  // How to play: what the coach says right now (null outside the practice morning, and once its last card is up)
+  const line = clock.tutorial && !title && status === 'ready' && !(clock.phase === 'dayWon' && !clock.scene) ? coach({ clock, near, known, needs, ready, listSeen }) : null
+
   return (
     <div ref={stageRef} className="stage">
       <canvas ref={canvasRef} className="world" />
@@ -256,6 +327,8 @@ export default function Game() {
         onContinue={() => gameRef.current?.next()}
         best={best}
         bestAt={bestAt}
+        pointAt={line?.point}
+        onTitle={toTitle}
         clock={clock}
         worry={clock.worry ?? 0}
         calm={calm}
@@ -269,8 +342,15 @@ export default function Game() {
               className="tool"
               aria-pressed={soundOn}
               onClick={() => {
-                soundRef.current?.setMuted(soundOn)
-                setSoundOn(!soundOn)
+                const sound = soundRef.current
+                if (!sound) return
+                sound.setMuted(soundOn)
+                // turning the sound back on when both switches in Settings are off turns both on
+                if (soundOn === false && !sound.on.music && !sound.on.sounds) {
+                  sound.setOn('music', true)
+                  sound.setOn('sounds', true)
+                }
+                syncSound()
               }}
             >
               Sound {soundOn ? 'on' : 'off'}
@@ -292,7 +372,7 @@ export default function Game() {
       </Overlay>
       {task && (
         <div className={overlayClass}>
-          <Task kid={KIDS.find((k) => k.name === task)} needId={needs[task]?.[0]} onDone={finishTask} onClose={closeTask} onEvent={note} worry={clock.worry ?? 0} onMiss={() => gameRef.current?.miss()} />
+          <Task kid={KIDS.find((k) => k.name === task)} needId={needs[task]?.[0]} onDone={finishTask} onClose={closeTask} onEvent={note} worry={clock.worry ?? 0} onMiss={() => gameRef.current?.miss()} tip={clock.tutorial ? 'Practice: the bus clock is stopped. Take your time.' : ''} />
         </div>
       )}
       {showLog && (
@@ -308,8 +388,24 @@ export default function Game() {
       <canvas ref={mapRef} className="minimap" hidden={!showMap} aria-label="Tile map of the house" />
       {status === 'loading' && <p className="note">Waking the house up</p>}
       {status === 'error' && <p className="note">The house did not load. Reload the page to try again.</p>}
-      {status === 'ready' && title && <Title best={best} onStart={() => setTitle(false)} />}
-      {status === 'ready' && !title && !walked && !task && <p className="note">Tap the floor, or use the stick or arrow keys, to walk Dreko</p>}
+      {line && !task && !listOpen && <div className={overlayClass}><Coach line={line} onLeave={toTitle} /></div>}
+      {status === 'ready' && title && (
+        <Title
+          view={title}
+          onView={setTitle}
+          best={best}
+          onStart={() => setTitle(null)}
+          onHow={startTutorial}
+          sound={groups}
+          onSound={flipSound}
+          onClearBest={() => {
+            clearBest()
+            setBest([])
+            setBestAt(-1)
+          }}
+        />
+      )}
+      {status === 'ready' && !title && !clock.tutorial && !walked && !task && <p className="note">Tap the floor, or use the stick or arrow keys, to walk Dreko</p>}
     </div>
   )
 }

@@ -84,6 +84,11 @@ export const ANXIETY = { perLearned: 0.03, perCounted: 0.03, perMiss: 0.08, sett
 // settings are in src/game/needs.js (MOVES).
 export const TASK = { doneMs: 500 }
 
+// How to play (Carl, Nov 22): a practice morning with the bus clock stopped. Seven kids are ready at the bus
+// stop already; these three still need Dreko. Between them the four needs use all four moves, and the last
+// kid has two needs, so the "Oh wait, I forgot something!" walk back is in it too. A draft to tune.
+export const TUTOR = { needs: { Tix: ['breakfast'], Zhar: ['lunch'], Pobo: ['backpack', 'jacket'] } }
+
 // The look of the screen overlay, as Carl picked on Nov 20: colour, with painted icons in the game's pen and
 // watercolour look.
 // icons: 'painted' (pictures from public/art/icons/, inked where one is missing), 'inked' (wobbly pen line

@@ -17,7 +17,7 @@ const MOVE = {
   sides: [Sides, sidesHow],
 }
 
-export default function Task({ kid, needId = kid.needId, onDone, onClose, onEvent, worry = 0, onMiss }) {
+export default function Task({ kid, needId = kid.needId, onDone, onClose, onEvent, worry = 0, onMiss, tip = '' }) {
   const spec = MOVES[needId] ?? MOVES.breakfast
   const [Move, how] = MOVE[spec.move]
   const [said, setSaid] = useState('')
@@ -52,6 +52,7 @@ export default function Task({ kid, needId = kid.needId, onDone, onClose, onEven
   return (
     <div className="list" role="dialog" aria-label={`Help ${kid.name}: ${NEEDS[needId]}`} data-move={spec.move}>
       <div className="panel panel-task">
+        {tip && <p className="task-tip">{tip}</p>}
         <h2>{NEEDS[needId]} <small>{kid.name}</small></h2>
         <div className={`task-art ${done ? 'task-done' : ''}`}>
           <Icon name={done ? 'tick' : needId} wash={done ? 'green' : 'need'} />

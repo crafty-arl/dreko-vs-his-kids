@@ -16,6 +16,14 @@ export function readBest() {
   }
 }
 
+export function clearBest() {
+  try {
+    window.localStorage.removeItem(KEY)
+  } catch {
+    // nothing kept, nothing to clear
+  }
+}
+
 // adds a finished game and gives back the new board and where this game landed on it (-1 = not on it)
 export function addRun(run) {
   const best = [...readBest(), run].sort(better).slice(0, KEEP)

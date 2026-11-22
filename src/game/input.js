@@ -1,6 +1,8 @@
 // Reads the player: keyboard arrows or WASD, and a game controller's left stick or D-pad.
 // Returns where they are pushing on the SCREEN: x is right, y is up, each from -1 to 1.
 
+import { pads } from './pad.js'
+
 export function createInput(target = window) {
   const keys = new Set()
   const down = (e) => {
@@ -18,9 +20,7 @@ export function createInput(target = window) {
   function read() {
     let x = (has('arrowright', 'd') ? 1 : 0) - (has('arrowleft', 'a') ? 1 : 0)
     let y = (has('arrowup', 'w') ? 1 : 0) - (has('arrowdown', 's') ? 1 : 0)
-    const pads = navigator.getGamepads ? navigator.getGamepads() : []
-    for (const pad of pads) {
-      if (!pad) continue
+    for (const pad of pads()) {
       const dead = 0.25
       const ax = pad.axes[0] || 0
       const ay = pad.axes[1] || 0
@@ -36,21 +36,27 @@ export function createInput(target = window) {
     return len > 1 ? [x / len, y / len] : [x, y]
   }
 
-  // Controller buttons that were pressed since the last call: 'a', 'b', 'y' or 'start' (standard layout).
+  // Controller buttons that were pressed since the last call: 'a', 'b', 'y' or 'start' (standard layout),
+  // and 'up', 'down', 'left' or 'right' for a press of the D-pad or a firm push of the stick (the menus use these).
   const BUTTONS = { 0: 'a', 1: 'b', 3: 'y', 9: 'start' }
   const held = new Set()
   function taps() {
     const out = []
-    const pads = navigator.getGamepads ? navigator.getGamepads() : []
-    for (const pad of pads) {
-      if (!pad) continue
-      for (const i in BUTTONS) {
-        const id = pad.index + ':' + i
-        const on = !!pad.buttons[i]?.pressed
-        if (on && !held.has(id)) out.push(BUTTONS[i])
+    for (const pad of pads()) {
+      const edge = (name, on) => {
+        const id = pad.index + ':' + name
+        if (on && !held.has(id)) out.push(name)
         if (on) held.add(id)
         else held.delete(id)
       }
+      for (const i in BUTTONS) edge(BUTTONS[i], !!pad.buttons[i]?.pressed)
+      const b = pad.buttons
+      const ax = pad.axes[0] || 0
+      const ay = pad.axes[1] || 0
+      edge('up', !!b[12]?.pressed || ay < -0.6)
+      edge('down', !!b[13]?.pressed || ay > 0.6)
+      edge('left', !!b[14]?.pressed || ax < -0.6)
+      edge('right', !!b[15]?.pressed || ax > 0.6)
     }
     return out
   }

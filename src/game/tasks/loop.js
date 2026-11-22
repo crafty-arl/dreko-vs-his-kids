@@ -1,5 +1,6 @@
 // What every mini task shares under the hood: one frame loop, and the controller read the same way.
 import { useEffect, useRef } from 'react'
+import { pads } from '../pad.js'
 
 const NAMES = ['a', 'rt', 'lb', 'rb', 'left', 'right', 'up', 'down']
 
@@ -7,9 +8,7 @@ const NAMES = ['a', 'rt', 'lb', 'rb', 'left', 'right', 'up', 'down']
 // or a firm push of the stick). x and y are the stick or D-pad as a push from -1 to 1, y down.
 function readPad() {
   const s = { a: false, rt: false, lb: false, rb: false, left: false, right: false, up: false, down: false, x: 0, y: 0 }
-  const pads = navigator.getGamepads ? navigator.getGamepads() : []
-  for (const p of pads) {
-    if (!p) continue
+  for (const p of pads()) {
     const b = p.buttons
     const ax = p.axes[0] || 0
     const ay = p.axes[1] || 0

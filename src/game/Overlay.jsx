@@ -7,6 +7,7 @@ import { Icon, InkFilter } from './Icon.jsx'
 import { PLACES } from './house.js'
 import { NEEDS, ROOM_OF } from './needs.js'
 import { BestTries } from './Title.jsx'
+import { TutorialDone } from './Tutorial.jsx'
 
 // the classes that carry the overlay's colours and icon look; the mini task card wears them too
 export const overlayClass = `overlay look-${UI.icons === 'plain' ? 'plain' : 'inked'} ui-${UI.overlay}`
@@ -19,7 +20,7 @@ const clockText = (seconds) => `${Math.floor(seconds / 60)}:${String(Math.ceil(s
 // bus, at the stop remembering one more need, on the way back in, or waiting for the bus.
 // helping: the kid Dreko can help right now, if any.
 // bubbleRefs: one ref per kid, in KIDS order; the game moves them every frame.
-export default function Overlay({ place, known, needs, ready, helping, clock, worry, calm, listOpen, onToggleList, onHelp, onPlayAgain, onContinue, best = [], bestAt = -1, bubbleRefs, settings, children }) {
+export default function Overlay({ place, known, needs, ready, helping, clock, worry, calm, listOpen, onToggleList, onHelp, onPlayAgain, onContinue, best = [], bestAt = -1, pointAt, onTitle, bubbleRefs, settings, children }) {
   const over = clock.phase === 'left' || clock.phase === 'over' || clock.phase === 'dayWon'
   const left = (kid) => needs[kid.name] ?? []
   const needOf = (kid) => left(kid)[0]
@@ -58,7 +59,7 @@ export default function Overlay({ place, known, needs, ready, helping, clock, wo
         {KIDS.map((kid, i) => {
           const state = stateOf(kid)
           return (
-            <div key={kid.name} ref={(el) => { bubbleRefs.current[i] = el }} className={`bubble bubble-${state}`}>
+            <div key={kid.name} ref={(el) => { bubbleRefs.current[i] = el }} className={`bubble bubble-${state} ${pointAt === kid.name ? 'bubble-point' : ''}`}>
               {state === 'forgot'
                 ? <span className="forgot">Oh wait, I forgot something!</span>
                 : <Icon name={iconOf(state, kid)} wash={state === 'ready' ? 'green' : state === 'known' ? 'need' : undefined} />}
@@ -86,7 +87,7 @@ export default function Overlay({ place, known, needs, ready, helping, clock, wo
             <Icon name="bus" wash="gold" />
             <span className="num">{onBus}/{KIDS.length}</span>
           </div>
-          <p className="place place-day">{week > 0 ? `Week ${week + 1} · ` : ''}{day} · try {clock.loop} of {WEEK.tries}</p>
+          <p className="place place-day">{clock.tutorial ? 'How to play · practice' : <>{week > 0 ? `Week ${week + 1} · ` : ''}{day} · try {clock.loop} of {WEEK.tries}</>}</p>
           {place && <p className="place">{place}</p>}
           {children}
         </div>
@@ -117,7 +118,8 @@ export default function Overlay({ place, known, needs, ready, helping, clock, wo
       )}
 
       {/* a day done: all ten boarded, and the next day is harder */}
-      {clock.phase === 'dayWon' && !clock.scene && (
+      {clock.phase === 'dayWon' && !clock.scene && clock.tutorial && <TutorialDone onStart={onContinue} onTitle={onTitle} />}
+      {clock.phase === 'dayWon' && !clock.scene && !clock.tutorial && (
         <div className="list" role="status">
           <div className="panel panel-bus">
             <h2>{nextWeek > week ? `Week ${week + 1} done` : `${day} done`}</h2>

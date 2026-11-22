@@ -11,6 +11,8 @@ const FILES = {
 }
 const VOLUME = { music: 0.5, tick: 0.85, lose: 0.9, win: 0.9 }
 const KEY = 'dreko-sound'
+// Settings: the music (the tune that loops) and the sounds (tick-tock, bus left, all aboard) each have a switch
+const GROUP = { music: 'music', tick: 'sounds', lose: 'sounds', win: 'sounds' }
 const WAKE = ['pointerdown', 'pointerup', 'touchend', 'click', 'keydown']
 
 export function createSound() {
@@ -23,9 +25,13 @@ export function createSound() {
   const want = {} // what should be playing right now: { name: { loop } }
   const level = {} // how far a track is turned down, 0 to 1 (1 when not set)
   let muted = false
-  try { muted = localStorage.getItem(KEY) === 'off' } catch { /* private mode: sound stays on */ }
+  const on = { music: true, sounds: true }
+  try {
+    muted = localStorage.getItem(KEY) === 'off'
+    for (const g in on) on[g] = localStorage.getItem(`${KEY}-${g}`) !== 'off'
+  } catch { /* private mode: sound stays on */ }
 
-  const loud = (name) => VOLUME[name] * (level[name] ?? 1)
+  const loud = (name) => (on[GROUP[name]] ? VOLUME[name] * (level[name] ?? 1) : 0)
 
   function start(name) {
     if (!ctx || !buffers[name] || playing[name] || !want[name]) return
@@ -112,16 +118,31 @@ export function createSound() {
     if (master) master.gain.value = muted ? 0 : 1
   }
 
+  // Settings: turn the music or the sounds on or off. It is remembered on this device.
+  function setOn(group, yes) {
+    on[group] = !!yes
+    try { localStorage.setItem(`${KEY}-${group}`, yes ? 'on' : 'off') } catch { /* nothing to save to */ }
+    for (const name in playing) {
+      if (GROUP[name] !== group) continue
+      const g = playing[name].gain.gain
+      g.cancelScheduledValues(ctx.currentTime)
+      g.setValueAtTime(loud(name), ctx.currentTime)
+    }
+  }
+
   return {
     play,
     stop,
     turn,
     setMuted,
+    setOn,
     get muted() { return muted },
+    get on() { return { ...on } },
     // for tests: which tracks are sounding right now, and how loud each is set
     state: () => ({
       engine: ctx ? ctx.state : 'asleep',
       muted,
+      groups: { ...on },
       on: Object.fromEntries(Object.keys(FILES).map((n) => [n, !!playing[n]])),
       loud: Object.fromEntries(Object.keys(playing).map((n) => [n, +playing[n].gain.gain.value.toFixed(2)])),
     }),
