@@ -35,17 +35,20 @@ export function BestTries({ best, mark = -1 }) {
 }
 
 // what the browser says about a controller, in one line
-function PadLine({ pad }) {
+function PadLine({ pad, short }) {
   if (!pad.can) return <p className="pad-line">This browser does not pass controllers to web pages.</p>
   if (!pad.seen) return <p className="pad-line">Using a controller? Press any button on it so the browser shows it to the game.</p>
-  return <p className="pad-line pad-on">Controller connected: {pad.name}</p>
+  return (
+    <>
+      <p className="pad-line pad-on">Controller connected: {pad.name}</p>
+      {short && !pad.standard && !pad.taught && <p className="pad-line">Its buttons are in an unusual order. Open Settings to set them up.</p>}
+    </>
+  )
 }
 
 function Settings({ sound, onSound, onClearBest, hasBest, onBack }) {
   const pad = usePad(true)
   const [sure, setSure] = useState(false)
-  const stick = pad.stick[0] || pad.stick[1] ? [pad.stick[0] < 0 ? 'Stick left' : pad.stick[0] > 0 ? 'Stick right' : null, pad.stick[1] < 0 ? 'Stick up' : pad.stick[1] > 0 ? 'Stick down' : null].filter(Boolean) : []
-  const lit = [...pad.down, ...stick]
   return (
     <div className="panel panel-bus panel-title panel-menu">
       <h2>Settings</h2>
@@ -60,11 +63,22 @@ function Settings({ sound, onSound, onClearBest, hasBest, onBack }) {
       <div className="set-box">
         <h3>Controller</h3>
         <PadLine pad={pad} />
-        {pad.seen && (
+        {pad.seen && pad.learn && (
+          <>
+            <p className="pad-learn" aria-live="polite">Press <b>{pad.learn.name}</b> on the controller <small>{pad.learn.at + 1} of {pad.learn.total}</small></p>
+            <button type="button" className="tool" onClick={pad.stopTeach}>Cancel</button>
+          </>
+        )}
+        {pad.seen && !pad.learn && (
           <>
             <p className="pad-line">Press a button or push the stick. What the game sees shows here:</p>
-            <p className="pad-test" aria-live="polite">{lit.length ? lit.map((name) => <b key={name}>{name}</b>) : <i>nothing pressed</i>}</p>
-            {!pad.standard && <p className="pad-line">This controller does not use the usual button layout, so some buttons may be swapped.</p>}
+            <p className="pad-test" aria-live="polite">{pad.down.length ? pad.down.map((name) => <b key={name}>{name}</b>) : <i>nothing pressed</i>}</p>
+            {!pad.standard && !pad.taught && <p className="pad-line">The browser does not know this controller's button order. Set the buttons up once and the game will remember.</p>}
+            {pad.taught && <p className="pad-line">This controller's buttons were set up by you.</p>}
+            <div className="pad-tools">
+              <button type="button" className="tool" onClick={pad.teach}>{pad.taught ? 'Set up again' : 'Set up buttons'}</button>
+              {pad.taught && <button type="button" className="tool" onClick={pad.forget}>Undo set up</button>}
+            </div>
           </>
         )}
       </div>
@@ -141,7 +155,7 @@ export default function Title({ view, onView, best, onStart, onHow, sound, onSou
               <button type="button" className="tool" onClick={() => onView('settings')}>Settings</button>
               <button type="button" className="tool" onClick={() => onView('credits')}>Credits</button>
             </div>
-            <PadLine pad={pad} />
+            <PadLine pad={pad} short />
             <BestTries best={best} />
           </div>
         )}

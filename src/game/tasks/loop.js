@@ -1,6 +1,6 @@
 // What every mini task shares under the hood: one frame loop, and the controller read the same way.
 import { useEffect, useRef } from 'react'
-import { pads } from '../pad.js'
+import { pads, readPad as padOf } from '../pad.js'
 
 const NAMES = ['a', 'rt', 'lb', 'rb', 'left', 'right', 'up', 'down']
 
@@ -9,25 +9,17 @@ const NAMES = ['a', 'rt', 'lb', 'rb', 'left', 'right', 'up', 'down']
 function readPad() {
   const s = { a: false, rt: false, lb: false, rb: false, left: false, right: false, up: false, down: false, x: 0, y: 0 }
   for (const p of pads()) {
-    const b = p.buttons
-    const ax = p.axes[0] || 0
-    const ay = p.axes[1] || 0
-    const dx = (b[15]?.pressed ? 1 : 0) - (b[14]?.pressed ? 1 : 0)
-    const dy = (b[13]?.pressed ? 1 : 0) - (b[12]?.pressed ? 1 : 0)
-    if (Math.hypot(ax, ay) > 0.25) {
-      s.x += ax
-      s.y += ay
-    }
-    s.x += dx
-    s.y += dy
-    s.a ||= !!b[0]?.pressed
-    s.rt ||= !!b[7]?.pressed
-    s.lb ||= !!b[4]?.pressed
-    s.rb ||= !!b[5]?.pressed
-    s.left ||= dx < 0 || ax < -0.6
-    s.right ||= dx > 0 || ax > 0.6
-    s.up ||= dy < 0 || ay < -0.6
-    s.down ||= dy > 0 || ay > 0.6
+    const pad = padOf(p)
+    s.x += pad.sx + pad.dx
+    s.y += pad.sy + pad.dy
+    s.a ||= pad.a
+    s.rt ||= pad.rt
+    s.lb ||= pad.lb
+    s.rb ||= pad.rb
+    s.left ||= pad.dx < 0 || pad.sx < -0.6
+    s.right ||= pad.dx > 0 || pad.sx > 0.6
+    s.up ||= pad.dy < 0 || pad.sy < -0.6
+    s.down ||= pad.dy > 0 || pad.sy > 0.6
   }
   const len = Math.hypot(s.x, s.y)
   if (len > 1) {
