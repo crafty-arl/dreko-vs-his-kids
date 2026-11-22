@@ -2,7 +2,7 @@
 import * as THREE from 'three'
 import { GMThree, GMTiles } from '../engine/index.js'
 import { buildHouse, card, cutout, loadArt } from './art.js'
-import { ANXIETY, BUS, CAMERA, CLOCK, DREKO, GOLD, INK, PAPER, ROAM, ROOM_VIEW, TILE, WALK, WEEK } from './config.js'
+import { ANXIETY, BUS, CAMERA, CLOCK, DREKO, GOLD, INK, PAPER, ROAM, ROOM_VIEW, TILE, WALK, WEEK, WORLD } from './config.js'
 import { KIDS, kidArt } from './family.js'
 import { H, PLACES, PROPS, ROAD_Y, ROWS, SMALL, SOLID, SPOTS, W, floorTiles, placeName, zone } from './house.js'
 import { createInput } from './input.js'
@@ -37,8 +37,23 @@ function placeDay(deal) {
 
 export async function startGame(canvas, hooks = {}) {
   const img = await loadArt()
-  const view = GMThree.create(THREE, canvas, { smooth: true, upright: true })
-  view.build(buildHouse(img, INK))
+  const engine = GMThree.create(THREE, canvas, { smooth: true, upright: true })
+  engine.build(buildHouse(img, INK))
+  // The engine's map is WORLD.margin tiles bigger than the house on every side (the still world around the
+  // home). The game keeps the house's own tile numbers: every place handed to the engine moves over by the
+  // margin here, and a tap comes back in house numbers.
+  const M = WORLD.margin
+  const moved = (list) => list.map((t) => ({ ...t, at: [t.at[0] + M, t.at[1] + M] }))
+  const view = {
+    ...engine,
+    setThings: (list) => engine.setThings(moved(list)),
+    setMarks: (list) => engine.setMarks(moved(list)),
+    render: (o) => engine.render({ ...o, at: [o.at[0] + M, o.at[1] + M, o.at[2]], sky: WORLD.ground[1] }), // past the map's edge the ground's grey goes on
+    pick: (px, py) => {
+      const hit = engine.pick(px, py)
+      return hit && { ...hit, x: hit.x - M, y: hit.y - M }
+    },
+  }
   let walk = walkGrid()
   const openGrid = walkGrid() // the house with no kids in the way, for a kid finding the way to the bus
   const input = createInput()
@@ -730,7 +745,7 @@ export async function startGame(canvas, hooks = {}) {
       kids.forEach((k, i) => {
         const pose = poseOf(k.walker)
         const floatAt = k.kid.floats ? 0.3 + 0.05 * Math.sin(now / 500) : 0
-        head.set(k.at[0], pose.up + floatAt + k.size * pose.tall * lift, k.at[1]).project(view.camera)
+        head.set(k.at[0] + M, pose.up + floatAt + k.size * pose.tall * lift, k.at[1] + M).project(view.camera)
         points[i][0] = (head.x * 0.5 + 0.5) * size.w
         points[i][1] = (-head.y * 0.5 + 0.5) * size.h
         points[i][2] = k.state !== 'aboard' && head.z < 1 && Math.abs(head.x) < 1.1 && Math.abs(head.y) < 1.1

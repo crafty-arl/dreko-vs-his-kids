@@ -215,7 +215,7 @@
     let last = null;
     function render(o) {
       last = o; const under = o.mode === 'walk' && o.eye[2] < 0;
-      const sky = new THREE.Color(under ? '#14110f' : '#E6DCC8');
+      const sky = new THREE.Color(under ? '#14110f' : o.sky || '#E6DCC8');   /* DREKO: o.sky, the colour past the map's edge */
       scene.background = sky;
       if (o.mode === 'walk') {
         scene.fog = new THREE.Fog(under ? '#14110f' : '#EEE8DC', under ? 2 : 6, under ? 9 : 22);

@@ -2,7 +2,7 @@
 // and wall faces, and square cut-outs for people and furniture.
 import { KIDS, kidArt } from './family.js'
 import { H, PLACES, ROWS, W, zone } from './house.js'
-import { WALL } from './config.js'
+import { WALL, WORLD } from './config.js'
 
 const TEXTURES = ['f-kitchen', 'f-bath', 'f-cubby', 'f-hall', 'f-runner', 'f-walk', 'f-road', 'w-kitchen', 'w-window', 'w-bath', 'w-cubby', 'w-hall', 'w-out']
 const CUTOUTS = ['dreko', 'dreko-back', 'stove', 'fridge', 'counter', 'table', 'cereal-bowl', 'icons/sweat', ...KIDS.map(kidArt)]
@@ -182,17 +182,23 @@ export function buildHouse(img, ink) {
     return { img: cap, top: cap, faces: [undefined, east, south, undefined], height: y1 - y0 }
   }
 
+  // Outside the house: the pavement, the road and the far pavement run on past both ends of the house, and
+  // the rest is plain ground. The house keeps its own tile numbers; the engine's map starts `M` tiles before it.
+  const M = WORLD.margin
+  const ground = (x, y) => (y >= 13 && y < H ? floorOf(x, y) : plain(WORLD.ground[hash(x, y) % WORLD.ground.length]))
+
   const levels = {}
   for (const level of [0, 1]) {
     const cells = []
-    for (let y = 0; y < H; y++) {
-      cells.push([])
-      for (let x = 0; x < W; x++) {
-        const isWall = ROWS[y][x] === '#'
-        cells[y].push(isWall ? wallOf(x, y, level) : level === 0 ? { img: floorOf(x, y) } : null)
+    for (let y = -M; y < H + M; y++) {
+      const row = []
+      cells.push(row)
+      for (let x = -M; x < W + M; x++) {
+        if (x < 0 || y < 0 || x >= W || y >= H) row.push(level === 0 ? { img: ground(x, y) } : null)
+        else row.push(ROWS[y][x] === '#' ? wallOf(x, y, level) : level === 0 ? { img: floorOf(x, y) } : null)
       }
     }
     levels[level] = { cell: (x, y) => cells[y][x] }
   }
-  return { w: W, h: H, levels, flat: true, ink }
+  return { w: W + 2 * M, h: H + 2 * M, levels, flat: true, ink }
 }

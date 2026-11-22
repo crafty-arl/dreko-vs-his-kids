@@ -52,6 +52,12 @@ export const ROAM = { fromDay: 3, where: 'room', speed: 1.5, restMs: [300, 1100]
 // `pace`: Mom paces the far pavement between the x of `from` and `to` at `speed` tiles a second, and stops for
 // `restMs` to look at the house (Carl, Nov 21: "mom pacing the streets and trying to look into the house").
 // Every number is a draft. A picture that is not in public/art/ yet is drawn as a grey stand-in.
+// The still world around the home: the engine's map is `margin` tiles bigger than the house on every side, so the
+// house no longer floats in empty space. Nobody walks out there. The street runs on past both ends of the house
+// with the tiles it already has; the rest is ground in the `ground` greys until a painted tile exists.
+// Everything out there stays black, white and grey (Carl's colour rule). The margin covers the bus's whole drive.
+export const WORLD = { margin: 12, ground: ['#bcb8ad', '#b6b2a7', '#b0aca1'] }
+
 export const BUS = { at: [6.5, 15.9], from: -7, to: 24, speed: 9, size: 2.7, comeAt: 10, boardMs: 170, nodMs: 1100, driver: [0.78, 1.42], driverSize: 0.66, mom: [9.6, 17.7], momSize: 1.9, pace: { from: 2.5, to: 12.5, speed: 1.3, restMs: [900, 1900] }, cam: [6.9, 15.5] }
 
 // Dreko's anxiety, from 0 (calm) to 1. It climbs with the clock: the part of the try that is gone. Every need
