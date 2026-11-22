@@ -805,3 +805,105 @@ body,
 @media (prefers-reduced-motion: reduce) {
   .chip-calm, .task-play.is-shaky { animation: none; }
 }
+
+/* ---------- the title screen and the three best tries ---------- */
+.title { z-index: 5; }
+.title .list { background: rgba(7, 7, 7, 0.62); }
+
+.panel-title { width: min(100%, 380px); padding: 18px 16px 16px; }
+
+.title-cast {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 22px;
+  margin-bottom: 12px;
+}
+
+.title-dreko { height: 150px; width: auto; }
+
+.title-kids {
+  display: grid;
+  grid-template-columns: repeat(5, auto);
+  align-items: end;
+  gap: 4px 3px;
+}
+
+.title-kids img { height: 70px; width: auto; display: block; margin: 0 auto; }
+
+.panel-title h1 {
+  margin: 0 0 6px;
+  font: 400 58px/1 Anton, Impact, 'Arial Narrow', sans-serif;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.panel-title h1 b { display: block; font-weight: 400; font-size: 0.8em; white-space: nowrap; }
+.panel-title h1 span { color: var(--gold); }
+
+.best {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 2px solid var(--ink);
+  text-align: left;
+}
+
+.best h3 {
+  margin: 0 0 8px;
+  font: 400 18px/1 Anton, Impact, 'Arial Narrow', sans-serif;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-align: center;
+}
+
+.best ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+
+.best-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  border: 2px solid var(--ink);
+  border-radius: 12px;
+  background: #fff;
+}
+
+.best-now { background: var(--gold); }
+
+.best-rank {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--ink);
+  color: var(--paper);
+  font: 400 16px/1 Anton, Impact, 'Arial Narrow', sans-serif;
+}
+
+.best-what { flex: 1; font-size: 16px; font-weight: 700; }
+.best-what em { display: block; font-size: 12px; font-weight: 600; font-style: normal; opacity: 0.75; }
+.best-now .best-what em { opacity: 0.9; }
+
+.best-tag {
+  flex: none;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.panel-bus p.best-none,
+.panel-bus p.best-miss { margin: 0; font-size: 14px; font-weight: 600; opacity: 0.75; text-align: center; }
+.panel-bus p.best-miss { margin-top: 8px; }
+
+@media (max-height: 640px) {
+  .title-dreko { height: 110px; }
+  .title-kids img { height: 52px; }
+  .panel-title h1 { font-size: 44px; }
+}

@@ -190,6 +190,7 @@ export async function startGame(canvas, hooks = {}) {
   }
   say(dayLine())
   let busy = false // true while a mini task is open: Dreko stands still, the clock keeps running
+  let hold = false // true while the title screen is up: Dreko stands still, so the clock does not start
   let held = null // the kid that task is for: they stand still too
   let near = null
   const tellClock = (force) => {
@@ -479,7 +480,7 @@ export async function startGame(canvas, hooks = {}) {
 
   function step(dt) {
     let [ix, iy] = input.read()
-    if (busy || clock.phase === 'over') {
+    if (busy || hold || clock.phase === 'over') {
       ix = 0
       iy = 0
       dreko.path = null
@@ -896,6 +897,7 @@ export async function startGame(canvas, hooks = {}) {
     setMapCanvas(c) { mapCanvas = c },
     setWalkTest(on) { walkTest = !!on },
     setPaused(on) { clock.paused = !!on },
+    setHold(on) { hold = !!on },
     // a mini task opens for a kid (their name) or closes (null): Dreko and that kid stand still
     setBusy(name) {
       busy = !!name

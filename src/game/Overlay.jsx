@@ -6,6 +6,7 @@ import { KIDS } from './family.js'
 import { Icon, InkFilter } from './Icon.jsx'
 import { PLACES } from './house.js'
 import { NEEDS, ROOM_OF } from './needs.js'
+import { BestTries } from './Title.jsx'
 
 // the classes that carry the overlay's colours and icon look; the mini task card wears them too
 export const overlayClass = `overlay look-${UI.icons === 'plain' ? 'plain' : 'inked'} ui-${UI.overlay}`
@@ -18,7 +19,7 @@ const clockText = (seconds) => `${Math.floor(seconds / 60)}:${String(Math.ceil(s
 // bus, at the stop remembering one more need, on the way back in, or waiting for the bus.
 // helping: the kid Dreko can help right now, if any.
 // bubbleRefs: one ref per kid, in KIDS order; the game moves them every frame.
-export default function Overlay({ place, known, needs, ready, helping, clock, worry, calm, listOpen, onToggleList, onHelp, onPlayAgain, onContinue, bubbleRefs, settings, children }) {
+export default function Overlay({ place, known, needs, ready, helping, clock, worry, calm, listOpen, onToggleList, onHelp, onPlayAgain, onContinue, best = [], bestAt = -1, bubbleRefs, settings, children }) {
   const over = clock.phase === 'left' || clock.phase === 'over' || clock.phase === 'dayWon'
   const left = (kid) => needs[kid.name] ?? []
   const needOf = (kid) => left(kid)[0]
@@ -136,6 +137,8 @@ export default function Overlay({ place, known, needs, ready, helping, clock, wo
             <h2>Game over</h2>
             <p>The bus left on try {WEEK.tries} of {WEEK.tries}. {onBus} of {KIDS.length} kids made it.</p>
             <p>Dreko got through {mornings === 1 ? '1 morning' : `${mornings} mornings`}.</p>
+            <BestTries best={best} mark={bestAt} />
+            {bestAt < 0 && <p className="best-miss">This one did not make your three best.</p>}
             <p>It all starts again on the first Monday.</p>
             <button type="button" className="close again" onClick={onContinue} autoFocus><span className="key key-a">A</span>Start over</button>
           </div>

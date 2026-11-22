@@ -2,9 +2,11 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { CLOCK, WEEK } from './config.js'
 import { KIDS } from './family.js'
 import Overlay, { overlayClass } from './Overlay.jsx'
+import { addRun, readBest } from './scores.js'
 import { createSound } from './sound.js'
 import { MOVES, MOVE_NAMES, NEEDS } from './needs.js'
 import Task from './Task.jsx'
+import Title from './Title.jsx'
 import { startGame } from './world.js'
 
 // The game screen: one canvas for the house, and the overlay on top.
@@ -36,9 +38,14 @@ export default function Game() {
   const [task, setTask] = useState(null) // the kid whose mini task is open
   const [listOpen, setListOpen] = useState(false)
   const [clock, setClock] = useState({ phase: 'ready', week: 0, day: 0, loop: 1, total: CLOCK.firstLoop, left: CLOCK.firstLoop, boarded: 0, earned: 0 })
+  // The title screen is up when the page opens. Open the page with ?notitle to go straight to the house.
+  const [title, setTitle] = useState(() => !new URLSearchParams(window.location.search).has('notitle'))
+  // Your three best tries, kept on this device. bestAt is where the game that just ended landed (-1 = not on the board).
+  const [best, setBest] = useState(readBest)
+  const [bestAt, setBestAt] = useState(-1)
   // the newest values, for the key and button handlers that are set up once
   const now = useRef({})
-  now.current = { near, task, listOpen, needs, card: (clock.phase === 'left' || clock.phase === 'dayWon' || clock.phase === 'over') && !clock.scene }
+  now.current = { near, task, listOpen, needs, title, card: (clock.phase === 'left' || clock.phase === 'dayWon' || clock.phase === 'over') && !clock.scene }
   const openTask = useCallback(() => {
     const s = now.current
     if (!s.near || s.task || s.listOpen) return
@@ -83,6 +90,10 @@ export default function Game() {
       })
     }
     const onButton = (button) => {
+      if (now.current.title) {
+        if (button === 'a') setTitle(false) // Start
+        return
+      }
       if (button === 'a') {
         if (now.current.card) gameRef.current?.next() // Continue on the card between tries and days
         else openTask()
@@ -133,6 +144,27 @@ export default function Game() {
     listWas.current = listOpen
   }, [listOpen, status, note])
 
+  // Dreko stands still while the title screen is up, so the bus clock cannot start behind it
+  useEffect(() => {
+    gameRef.current?.setHold(title)
+  }, [title, status])
+
+  // A game that ends goes on the board of the three best tries, once
+  const scored = useRef(false)
+  useEffect(() => {
+    if (clock.phase !== 'over') {
+      scored.current = false
+      return
+    }
+    if (scored.current) return
+    scored.current = true
+    const mornings = (clock.week ?? 0) * WEEK.days.length + clock.day
+    const board = addRun({ mornings, week: clock.week ?? 0, day: clock.day, kids: clock.boarded ?? 0, at: Date.now() })
+    setBest(board.best)
+    setBestAt(board.place)
+    note(`Game over after ${mornings === 1 ? '1 morning' : `${mornings} mornings`}. ${board.place >= 0 ? `It is number ${board.place + 1} of your three best tries.` : 'It is not one of your three best tries.'}`)
+  }, [clock.phase])
+
   // Sound: made once. It stays silent until the player's first tap or key, as browsers ask.
   useEffect(() => {
     const sound = createSound()
@@ -181,6 +213,14 @@ export default function Game() {
     const anyKey = (e) => {
       if (now.current.task) return // the mini task reads the keys while it is open
       const key = e.key.toLowerCase()
+      if (now.current.title) {
+        // Start on the title screen
+        if ((key === 'e' || key === ' ' || key === 'enter') && !e.repeat) {
+          e.preventDefault()
+          setTitle(false)
+        }
+        return
+      }
       if (now.current.card) {
         // Continue on the card between tries and days
         if ((key === 'e' || key === ' ' || key === 'enter') && !e.repeat) {
@@ -214,6 +254,8 @@ export default function Game() {
         onHelp={openTask}
         onPlayAgain={() => gameRef.current?.playAgain()}
         onContinue={() => gameRef.current?.next()}
+        best={best}
+        bestAt={bestAt}
         clock={clock}
         worry={clock.worry ?? 0}
         calm={calm}
@@ -266,7 +308,8 @@ export default function Game() {
       <canvas ref={mapRef} className="minimap" hidden={!showMap} aria-label="Tile map of the house" />
       {status === 'loading' && <p className="note">Waking the house up</p>}
       {status === 'error' && <p className="note">The house did not load. Reload the page to try again.</p>}
-      {status === 'ready' && !walked && !task && <p className="note">Tap the floor, or use the stick or arrow keys, to walk Dreko</p>}
+      {status === 'ready' && title && <Title best={best} onStart={() => setTitle(false)} />}
+      {status === 'ready' && !title && !walked && !task && <p className="note">Tap the floor, or use the stick or arrow keys, to walk Dreko</p>}
     </div>
   )
 }
