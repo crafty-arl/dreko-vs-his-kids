@@ -1,0 +1,8 @@
+dreko.apk
+app/build/
+.gradle/
+build/
+local.properties
+gradlew
+gradlew.bat
+gradle/

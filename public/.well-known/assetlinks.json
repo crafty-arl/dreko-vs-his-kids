@@ -1,0 +1,10 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "xyz.gmcarl.dreko",
+      "sha256_cert_fingerprints": ["74:39:49:89:38:33:B0:6E:77:35:6E:60:63:9A:58:F2:75:41:42:E0:52:64:BA:50:2D:80:5D:58:4E:D4:24:5D"]
+    }
+  }
+]

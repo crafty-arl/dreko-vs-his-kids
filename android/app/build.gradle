@@ -1,0 +1,22 @@
+plugins { id 'com.android.application' }
+
+// The app holds no game code. It opens the game's web page full screen in Chrome (a "trusted web activity"),
+// so the page gets the handheld's own controller through the browser's Gamepad API. The page it opens is
+// game_url in src/main/res/values/strings.xml.
+android {
+    namespace = 'xyz.gmcarl.dreko'
+    compileSdk = 36
+    defaultConfig {
+        applicationId = 'xyz.gmcarl.dreko'
+        minSdk = 29
+        targetSdk = 35
+        versionCode = 1
+        versionName = '0.1'
+    }
+    compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+    // signed with the Mac's standard debug key; its fingerprint is in the game's public/.well-known/assetlinks.json,
+    // which is what lets Chrome hide its address bar
+    buildTypes { release { minifyEnabled = false; signingConfig = signingConfigs.debug } }
+}
+
+dependencies { implementation 'com.google.androidbrowserhelper:androidbrowserhelper:2.5.0' }

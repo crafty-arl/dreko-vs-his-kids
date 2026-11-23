@@ -1,0 +1,10 @@
+// Dreko vs His Kids as an Android app (made for Carl's Odin 2). See README.md.
+pluginManagement {
+    repositories { google(); mavenCentral(); gradlePluginPortal() }
+    resolutionStrategy {
+        eachPlugin { if (requested.id.id == 'com.android.application') useVersion(providers.gradleProperty('agpVersion').get()) }
+    }
+}
+dependencyResolutionManagement { repositories { google(); mavenCentral() } }
+rootProject.name = 'dreko-vs-his-kids'
+include ':app'

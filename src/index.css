@@ -274,6 +274,7 @@ body,
   padding: 14px;
   background: rgba(7, 7, 7, 0.55);
   pointer-events: auto;
+  z-index: 3; /* above the kids' bubbles */
 }
 
 .panel {
