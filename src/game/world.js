@@ -166,6 +166,7 @@ export async function startGame(canvas, hooks = {}) {
     k.path = null
     k.pace = null
     k.wait = 0
+    k.hop = 0
     k.spot = spotOf(k)
     k.at = k.spot.slice()
     k.look = k.kid.flip ? 'front-flip' : 'front'
@@ -409,6 +410,7 @@ export async function startGame(canvas, hooks = {}) {
       say(`${name} reaches the bus stop and says "Oh wait, I forgot something!" One more need: ${NEEDS[needs[name][0]]}, in the ${roomName(needs[name][0])}. ${name} does not count for the bus yet.`)
     } else {
       k.state = 'stop'
+      k.hop = BUS.hopMs // made it: a little hop
       tellReady()
       say(`${name} is at the bus stop.`)
     }
@@ -476,6 +478,16 @@ export async function startGame(canvas, hooks = {}) {
   let stopped = false
   let last = 0
   let mapCanvas = null
+  let picked = null // the kid picked in the need list: ringed on the map
+  // the need pictures, for the map; each is fetched the first time the map wants it
+  const mapIcons = {}
+  const mapIcon = (name) => {
+    if (!mapIcons[name]) {
+      mapIcons[name] = new Image()
+      mapIcons[name].src = `${import.meta.env.BASE_URL}art/icons/${name}.webp`
+    }
+    return mapIcons[name]
+  }
 
   const free = (x, y) => {
     const r = DREKO.radius
@@ -675,6 +687,7 @@ export async function startGame(canvas, hooks = {}) {
     return [moved, side, f >= 1]
   }
   function stepKid(k, dt) {
+    if (k.hop > 0) k.hop -= dt
     let moved = 0
     let side = 0
     let arrived = false
@@ -746,6 +759,8 @@ export async function startGame(canvas, hooks = {}) {
     stepWalker(k.walker, dt, { moved, side, look: k.look })
   }
 
+  // how far off the floor a kid is: the floating kid floats, and a kid who just reached the bus stop hops
+  const liftOf = (k, now) => (k.kid.floats ? 0.3 + 0.05 * Math.sin(now / 500) : 0) + (k.hop > 0 ? BUS.hop * Math.sin((1 - k.hop / BUS.hopMs) * Math.PI) : 0)
   // one character on screen: the shared walk's pose laid over their picture
   const posed = (id, at, art, size, walker, floatAt, extra) => {
     const pose = poseOf(walker)
@@ -763,7 +778,7 @@ export async function startGame(canvas, hooks = {}) {
     }
     const things = [
       ...still,
-      ...kids.filter((k) => k.state !== 'aboard').map((k) => posed(k.kid.name, k.at, k.art, k.size, k.walker, k.kid.floats ? 0.3 + 0.05 * Math.sin(now / 500) : 0)),
+      ...kids.filter((k) => k.state !== 'aboard').map((k) => posed(k.kid.name, k.at, k.art, k.size, k.walker, liftOf(k, now))),
       posed('mom', mom.at, momArt, BUS.momSize, momWalk, 0.09 * Math.sin(Math.min(1, mom.tip / 900) * Math.PI)),
       { id: 'bus', at: [bus.x, BUS.at[1]], level: 0, img: busImg, size: BUS.size, wide: busWide },
       // the driver sits a hair behind the bus picture, seen through the open side of its cab (the 1920s bus has
@@ -785,13 +800,13 @@ export async function startGame(canvas, hooks = {}) {
     ])
     const tall = size.h > size.w
     view.render({ mode: 'orbit', angle: CAMERA.angle, tilt: CAMERA.tilt, upTo: 1, at: spy ? [spy.at[0], spy.at[1], 0] : [cam.at[0], cam.at[1], 0], dist: spy?.dist ?? cam.dist ?? (tall ? CAMERA.distTall : CAMERA.distWide) })
-    if (mapCanvas) drawMap()
+    if (mapCanvas) drawMap(now)
 
     // where the top of each kid's head is on screen, for the bubbles
     if (hooks.onBubbles) {
       kids.forEach((k, i) => {
         const pose = poseOf(k.walker)
-        const floatAt = k.kid.floats ? 0.3 + 0.05 * Math.sin(now / 500) : 0
+        const floatAt = liftOf(k, now)
         head.set(k.at[0] + M, pose.up + floatAt + k.size * pose.tall * lift, k.at[1] + M).project(view.camera)
         points[i][0] = (head.x * 0.5 + 0.5) * size.w
         points[i][1] = (-head.y * 0.5 + 0.5) * size.h
@@ -802,9 +817,10 @@ export async function startGame(canvas, hooks = {}) {
     }
   }
 
-  // The data under the art: walls dark, doors gold, kids purple, Dreko gold with a ring.
-  function drawMap() {
-    const s = 10
+  // The data under the art: walls dark, doors gold, Dreko gold with a ring, and over each kid what Dreko knows:
+  // their need once he has been told, a question mark until then, a tick when they are ready (Nov 23).
+  function drawMap(now) {
+    const s = 28
     if (mapCanvas.width !== W * s) {
       mapCanvas.width = W * s
       mapCanvas.height = H * s
@@ -828,19 +844,35 @@ export async function startGame(canvas, hooks = {}) {
     for (let y = 0; y <= H; y++) { g.moveTo(0, y * s + 0.5); g.lineTo(W * s, y * s + 0.5) }
     g.stroke()
     for (const k of kids) {
-      g.fillStyle = k.state === 'home' ? '#8f5fd0' : '#2e8b57'
-      g.beginPath(); g.arc(k.at[0] * s, k.at[1] * s, s * 0.32, 0, 7); g.fill()
+      if (k.state === 'aboard') continue
+      const name = k.kid.name
+      const left = needs[name]
+      const icon = !left.length ? 'tick' : (known[name] ?? 0) > doneOf(name) ? left[0] : 'ask'
+      const [x, y] = [k.at[0] * s, k.at[1] * s]
+      const r = s * 0.62
+      if (name === picked) {
+        // the kid picked in the need list: a gold ring that beats
+        g.strokeStyle = GOLD
+        g.lineWidth = s * 0.22
+        g.beginPath(); g.arc(x, y, r + s * (0.3 + 0.18 * Math.sin(now / 160)), 0, 7); g.stroke()
+      }
+      g.fillStyle = '#fff'
+      g.strokeStyle = !left.length ? '#2e8b57' : '#7a3fc4'
+      g.lineWidth = s * 0.1
+      g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); g.stroke()
+      const im = mapIcon(icon)
+      if (im.complete && im.naturalWidth) g.drawImage(im, x - r * 0.8, y - r * 0.8, r * 1.6, r * 1.6)
     }
     if (dreko.path) {
       g.strokeStyle = GOLD
-      g.lineWidth = 2
+      g.lineWidth = s * 0.16
       g.beginPath()
       dreko.path.forEach((p, i) => (i ? g.lineTo((p[0] / TILE) * s, (p[1] / TILE) * s) : g.moveTo((p[0] / TILE) * s, (p[1] / TILE) * s)))
       g.stroke()
     }
     g.fillStyle = GOLD
     g.strokeStyle = INK
-    g.lineWidth = 1.5
+    g.lineWidth = s * 0.12
     g.beginPath(); g.arc(dreko.at[0] * s, dreko.at[1] * s, s * 0.42, 0, 7); g.fill(); g.stroke()
   }
 
@@ -909,6 +941,8 @@ export async function startGame(canvas, hooks = {}) {
   return {
     resize,
     setMapCanvas(c) { mapCanvas = c },
+    // the kid picked in the need list (their name, or null): ringed on the map
+    setPicked(name) { picked = name || null },
     setWalkTest(on) { walkTest = !!on },
     setPaused(on) { clock.paused = !!on },
     setHold(on) { hold = !!on },
@@ -928,7 +962,10 @@ export async function startGame(canvas, hooks = {}) {
       const id = needs[name].shift()
       tellNeeds()
       tellKnown()
-      if (!needs[name].length) calm(`${name} is counted, which takes ${Math.round(ANXIETY.perCounted * 100)} off.`)
+      if (!needs[name].length) {
+        calm(`${name} is counted, which takes ${Math.round(ANXIETY.perCounted * 100)} off.`)
+        hooks.onCounted?.(name)
+      }
       say(`${name}: ${NEEDS[id]} done with ${MOVE_NAMES[MOVES[id].move]}. ${needs[name].length ? `${name} walks to the bus stop. Not remembered yet: ${NEEDS[needs[name][0]]}, in the ${roomName(needs[name][0])}.` : `Nothing left, so ${name} counts for the bus now: ${counted()} of ${kids.length}. ${name} walks to the stop.`}`)
       sendToStop(k)
     },

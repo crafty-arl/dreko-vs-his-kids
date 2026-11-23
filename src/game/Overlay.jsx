@@ -20,7 +20,7 @@ const clockText = (seconds) => `${Math.floor(seconds / 60)}:${String(Math.ceil(s
 // bus, at the stop remembering one more need, on the way back in, or waiting for the bus.
 // helping: the kid Dreko can help right now, if any.
 // bubbleRefs: one ref per kid, in KIDS order; the game moves them every frame.
-export default function Overlay({ place, known, needs, ready, helping, clock, worry, calm, listOpen, onToggleList, onHelp, onPlayAgain, onContinue, best = [], bestAt = -1, pointAt, onTitle, bubbleRefs, settings, children }) {
+export default function Overlay({ place, known, needs, ready, helping, clock, worry, calm, listOpen, onToggleList, onHelp, onPlayAgain, onContinue, best = [], bestAt = -1, pointAt, onTitle, counted = 0, onPick, bubbleRefs, settings, children }) {
   const over = clock.phase === 'left' || clock.phase === 'over' || clock.phase === 'dayWon'
   const left = (kid) => needs[kid.name] ?? []
   const needOf = (kid) => left(kid)[0]
@@ -49,6 +49,10 @@ export default function Overlay({ place, known, needs, ready, helping, clock, wo
   const learned = Object.keys(known).length
   const timeLeft = clock.left
   const hurry = clock.phase === 'run' && timeLeft <= CLOCK.hurry
+  // who is not ready yet, for the card after the bus has left
+  const missed = KIDS.filter((kid) => left(kid).length)
+  // a kid made ready earns time for the next try; there is no next try after the last one, or in the practice morning
+  const earns = counted > 0 && clock.phase === 'run' && !clock.tutorial && clock.loop < WEEK.tries
   const art = import.meta.env.BASE_URL + 'art/'
   return (
     <div className={overlayClass}>
@@ -74,11 +78,16 @@ export default function Overlay({ place, known, needs, ready, helping, clock, wo
             <Icon name="clock" wash="gold" />
             <span className="num">{clockText(timeLeft)}</span>
             <span className="bar"><i style={{ width: `${Math.max(0, Math.min(1, timeLeft / clock.total)) * 100}%` }} /></span>
+            {/* the key plays the pop again for every kid made ready */}
+            {earns && <span key={counted} className="pop" aria-live="polite">+{CLOCK.perKid}s<small>next try</small></span>}
           </div>
           {/* the key makes the chip play its calm flash again on every calm moment */}
           <div key={calm} className={`chip ${calm ? 'chip-calm' : ''}`} aria-label={`Anxiety ${Math.round(worry * 100)} percent`}>
             <Icon name="sweat" wash="red" />
-            <span className="bar bar-worry"><i style={{ width: `${Math.max(0.06, worry) * 100}%` }} /></span>
+            <span className="worry">
+              <span className="worry-name">Anxiety</span>
+              <span className="bar bar-worry"><i style={{ width: `${Math.max(0.06, worry) * 100}%` }} /></span>
+            </span>
           </div>
           {settings}
         </div>
@@ -112,6 +121,24 @@ export default function Overlay({ place, known, needs, ready, helping, clock, wo
             <p>{onBus} of {KIDS.length} kids made it.</p>
             <p>{triesLeft === 1 ? 'Last try' : `${triesLeft} tries left`}. {day} starts over{earned > 0 ? `, with ${earned} more seconds` : ''}.</p>
             <p>Dreko remembers what {learned === 1 ? '1 kid needs' : `${learned} kids need`}.</p>
+            {/* who missed the bus and what they still need: the need once Dreko has been told, a question mark until then */}
+            {missed.length > 0 && (
+              <div className="missed">
+                <h3>Not ready yet</h3>
+                <ul>
+                  {missed.map((kid) => {
+                    const knows = told(kid) > 0
+                    return (
+                      <li key={kid.name} title={knows ? NEEDS[needOf(kid)] : 'Not asked yet'}>
+                        <span className="face" style={{ backgroundImage: `url(${art}${kid.name.toLowerCase()}.webp)` }} />
+                        <span className={`slot slot-${knows ? 'known' : 'ask'}`}><Icon name={knows ? needOf(kid) : 'ask'} wash={knows ? 'need' : undefined} /></span>
+                        <b>{kid.name}</b>
+                      </li>
+                    )
+                  })}
+                </ul>
+              </div>
+            )}
             <button type="button" className="close again" onClick={onContinue} autoFocus><span className="key key-a">A</span>Continue</button>
           </div>
         </div>
@@ -164,7 +191,7 @@ export default function Overlay({ place, known, needs, ready, helping, clock, wo
                   : state === 'ask' ? `${roomOf(needOf(kid))}: not asked yet`
                   : left(kid).slice(0, told(kid)).map((id) => `${NEEDS[id]} in the ${roomOf(id)}`).join(', then ')
                 return (
-                  <li key={kid.name} className="row">
+                  <li key={kid.name} className="row row-pick" role="button" tabIndex={0} title={`Show ${kid.name} on the map`} onClick={() => onPick?.(kid.name)} onKeyDown={(e) => { if (e.key === 'Enter') onPick?.(kid.name) }}>
                     <span className="face" style={{ backgroundImage: `url(${art}${kid.name.toLowerCase()}.webp)` }} />
                     <span className="who">
                       {kid.name}
@@ -177,6 +204,7 @@ export default function Overlay({ place, known, needs, ready, helping, clock, wo
                 )
               })}
             </ul>
+            <p className="rows-tip">Tap a kid to see them on the map.</p>
             <button type="button" className="close" onClick={onToggleList}>Close</button>
           </div>
         </div>

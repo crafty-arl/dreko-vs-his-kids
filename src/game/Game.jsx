@@ -33,6 +33,9 @@ export default function Game() {
     setLog((list) => [line, ...list].slice(0, 80))
   }, [])
   const [calm, setCalm] = useState(0) // counts the calm moments, so the anxiety bar can show each one
+  const [counted, setCounted] = useState(0) // counts the kids made ready, so the clock can pop the time each one earns
+  // the kid picked in the need list: their bubble glows and the map rings them for a few seconds
+  const [picked, setPicked] = useState(null)
   const [known, setKnown] = useState({})
   const [needs, setNeeds] = useState({}) // what each kid still needs today: { kidName: [needId, ...] }, dealt by the game
   const [ready, setReady] = useState({}) // kids whose need is met: 'walking' to the bus stop, or at the 'stop'
@@ -136,7 +139,7 @@ export default function Game() {
       }
     }
 
-    startGame(canvasRef.current, { onPlace: setPlace, onWalk: () => setWalked(true), onKnown: setKnown, onNeeds: setNeeds, onReady: setReady, onNear: setNear, onBubbles, onButton, onClock: setClock, onEvent: note, onCalm: () => setCalm((n) => n + 1) })
+    startGame(canvasRef.current, { onPlace: setPlace, onWalk: () => setWalked(true), onKnown: setKnown, onNeeds: setNeeds, onReady: setReady, onNear: setNear, onBubbles, onButton, onClock: setClock, onEvent: note, onCalm: () => setCalm((n) => n + 1), onCounted: () => setCounted((n) => n + 1) })
       .then((g) => {
         if (cancelled) return g.stop()
         game = g
@@ -166,6 +169,29 @@ export default function Game() {
   useEffect(() => {
     gameRef.current?.setWalkTest(walkTest)
   }, [walkTest, status])
+
+  // A kid picked in the need list: the list closes, the map opens, and for a few seconds that kid is ringed on
+  // the map and their bubble glows in the house.
+  const mapForPick = useRef(false) // the map was opened by a pick, so it closes again with it
+  const pickKid = useCallback((name) => {
+    setListOpen(false)
+    setShowMap((open) => {
+      if (!open) mapForPick.current = true
+      return true
+    })
+    setPicked(name)
+    note(`${name} is picked in the need list: ringed on the map for a few seconds.`)
+  }, [note])
+  useEffect(() => {
+    gameRef.current?.setPicked(picked)
+    if (!picked) return undefined
+    const t = setTimeout(() => {
+      setPicked(null)
+      if (mapForPick.current) setShowMap(false)
+      mapForPick.current = false
+    }, 6000)
+    return () => clearTimeout(t)
+  }, [picked, status])
 
   // the clock waits while the need list is open
   const listWas = useRef(false)
@@ -327,7 +353,9 @@ export default function Game() {
         onContinue={() => gameRef.current?.next()}
         best={best}
         bestAt={bestAt}
-        pointAt={line?.point}
+        pointAt={picked ?? line?.point}
+        counted={counted}
+        onPick={pickKid}
         onTitle={toTitle}
         clock={clock}
         worry={clock.worry ?? 0}
@@ -385,7 +413,7 @@ export default function Game() {
           </ol>
         </section>
       )}
-      <canvas ref={mapRef} className="minimap" hidden={!showMap} aria-label="Tile map of the house" />
+      <canvas ref={mapRef} className="minimap" hidden={!showMap || !!title || listOpen || !!task || now.current.card} aria-label="Tile map of the house" />
       {status === 'loading' && <p className="note">Waking the house up</p>}
       {status === 'error' && <p className="note">The house did not load. Reload the page to try again.</p>}
       {line && !task && !listOpen && <div className={overlayClass}><Coach line={line} onLeave={toTitle} /></div>}
