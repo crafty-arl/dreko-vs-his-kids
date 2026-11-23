@@ -36,6 +36,13 @@ export default function Game() {
   const [counted, setCounted] = useState(0) // counts the kids made ready, so the clock can pop the time each one earns
   // the kid picked in the need list: their bubble glows and the map rings them for a few seconds
   const [picked, setPicked] = useState(null)
+  // The market: Dreko's points and what is in his pockets (from the game), whether the market card is up, which
+  // pocket a controller's RB uses, and the last thing an item did (or why it could not be used).
+  const [market, setMarket] = useState({ points: 0, pockets: [], gained: null, skates: false })
+  const [shop, setShop] = useState(false)
+  const [lit, setLit] = useState(0)
+  const [itemSay, setItemSay] = useState(null)
+  const sayId = useRef(0)
   const [known, setKnown] = useState({})
   const [needs, setNeeds] = useState({}) // what each kid still needs today: { kidName: [needId, ...] }, dealt by the game
   const [ready, setReady] = useState({}) // kids whose need is met: 'walking' to the bus stop, or at the 'stop'
@@ -53,7 +60,7 @@ export default function Game() {
   const [bestAt, setBestAt] = useState(-1)
   // the newest values, for the key and button handlers that are set up once
   const now = useRef({})
-  now.current = { near, task, listOpen, needs, title, card: (clock.phase === 'left' || clock.phase === 'dayWon' || clock.phase === 'over') && !clock.scene }
+  now.current = { near, task, listOpen, needs, title, shop, lit, phase: clock.phase, tutorial: clock.tutorial, pockets: market.pockets.length, card: (clock.phase === 'left' || clock.phase === 'dayWon' || clock.phase === 'over') && !clock.scene }
   const openTask = useCallback(() => {
     const s = now.current
     if (!s.near || s.task || s.listOpen) return
@@ -70,6 +77,14 @@ export default function Game() {
     setTask(null)
     if (name) gameRef.current?.needMet(name)
   }, [])
+  // Continue on a card. After a morning that was won the market comes up first, and its own button goes on.
+  const continueCard = useCallback(() => {
+    const s = now.current
+    if (s.phase === 'dayWon' && !s.tutorial && !s.shop) return setShop(true)
+    setShop(false)
+    gameRef.current?.next()
+  }, [])
+  const spendItem = useCallback((slot) => gameRef.current?.useItem(slot), [])
   const [place, setPlace] = useState('')
   const [status, setStatus] = useState('loading')
   const [showMap, setShowMap] = useState(false)
@@ -94,14 +109,15 @@ export default function Game() {
   }, [])
   // The title screen and its pages with a controller: the D-pad or stick moves between the buttons, A presses
   // the one that is lit, B goes back, Y is How to play and Start starts.
+  // The market works the same way; there A with nothing lit is its "Go to" button.
   const menuButton = useCallback((button) => {
     const view = now.current.title
-    const buttons = [...document.querySelectorAll('.title .panel button:not(:disabled)')]
+    const buttons = [...document.querySelectorAll(view ? '.title .panel button:not(:disabled)' : '.market .panel button:not(:disabled)')]
     const at = buttons.indexOf(document.activeElement)
     if (button === 'down' || button === 'right') buttons[(at + 1) % buttons.length]?.focus()
     else if (button === 'up' || button === 'left') buttons[(Math.max(at, 0) - 1 + buttons.length) % buttons.length]?.focus()
-    else if (button === 'a') (at >= 0 ? buttons[at] : view === 'home' ? buttons[0] : null)?.click()
-    else if (button === 'b' && view !== 'home') setTitle('home')
+    else if (button === 'a') (at >= 0 ? buttons[at] : view === 'home' ? buttons[0] : !view ? buttons[buttons.length - 1] : null)?.click()
+    else if (button === 'b' && view && view !== 'home') setTitle('home')
     else if (button === 'y' && view === 'home') startTutorial()
     else if (button === 'start' && view === 'home') setTitle(null)
   }, [startTutorial])
@@ -127,10 +143,15 @@ export default function Game() {
       })
     }
     const onButton = (button) => {
-      if (now.current.title) return menuButton(button)
+      if (now.current.title || now.current.shop) return menuButton(button)
       if (button === 'a') {
-        if (now.current.card) gameRef.current?.next() // Continue on the card between tries and days
+        if (now.current.card) continueCard() // Continue on the card between tries and days
         else openTask()
+      }
+      // the pockets: LB moves on to the next thing, RB uses the one that is lit
+      if (!now.current.task && !now.current.listOpen && !now.current.card && now.current.pockets) {
+        if (button === 'lb') setLit((v) => (v + 1) % now.current.pockets)
+        if (button === 'rb') spendItem(Math.min(now.current.lit, now.current.pockets - 1))
       }
       if (button === 'y' && !now.current.task) setListOpen((v) => !v)
       if (button === 'b') {
@@ -139,7 +160,7 @@ export default function Game() {
       }
     }
 
-    startGame(canvasRef.current, { onPlace: setPlace, onWalk: () => setWalked(true), onKnown: setKnown, onNeeds: setNeeds, onReady: setReady, onNear: setNear, onBubbles, onButton, onClock: setClock, onEvent: note, onCalm: () => setCalm((n) => n + 1), onCounted: () => setCounted((n) => n + 1) })
+    startGame(canvasRef.current, { onPlace: setPlace, onWalk: () => setWalked(true), onKnown: setKnown, onNeeds: setNeeds, onReady: setReady, onNear: setNear, onBubbles, onButton, onClock: setClock, onEvent: note, onCalm: () => setCalm((n) => n + 1), onCounted: () => setCounted((n) => n + 1), onMarket: setMarket, onItem: (e) => { sayId.current += 1; setItemSay({ ...e, n: sayId.current }) } })
       .then((g) => {
         if (cancelled) return g.stop()
         game = g
@@ -192,6 +213,20 @@ export default function Game() {
     }, 6000)
     return () => clearTimeout(t)
   }, [picked, status])
+
+  // the market card closes with the "day done" card, the lit pocket stays on a pocket that has something in it,
+  // and what an item said fades after a moment
+  useEffect(() => {
+    if (clock.phase !== 'dayWon') setShop(false)
+  }, [clock.phase])
+  useEffect(() => {
+    if (lit > 0 && lit >= market.pockets.length) setLit(Math.max(0, market.pockets.length - 1))
+  }, [lit, market.pockets.length])
+  useEffect(() => {
+    if (!itemSay) return undefined
+    const t = setTimeout(() => setItemSay(null), 2600)
+    return () => clearTimeout(t)
+  }, [itemSay])
 
   // the clock waits while the need list is open
   const listWas = useRef(false)
@@ -295,14 +330,17 @@ export default function Game() {
         }
         return
       }
+      if (now.current.shop) return // the market: its buttons take Enter and Space themselves
       if (now.current.card) {
         // Continue on the card between tries and days
         if ((key === 'e' || key === ' ' || key === 'enter') && !e.repeat) {
           e.preventDefault()
-          gameRef.current?.next()
+          continueCard()
         }
         return
       }
+      // 1, 2 and 3 use the thing in that pocket
+      if (/^[1-9]$/.test(key) && !e.repeat && !now.current.listOpen) spendItem(Number(key) - 1)
       if (/^(arrow|[wasd]$)/i.test(e.key)) setWalked(true)
       if (key === 'y') setListOpen((v) => !v)
       if (key === 'escape' || key === 'b') setListOpen(false)
@@ -350,7 +388,14 @@ export default function Game() {
         helping={!task && !listOpen && (clock.phase === 'run' || clock.phase === 'ready') ? KIDS.find((k) => k.name === near) : null}
         onHelp={openTask}
         onPlayAgain={() => gameRef.current?.playAgain()}
-        onContinue={() => gameRef.current?.next()}
+        onContinue={continueCard}
+        market={market}
+        shop={shop}
+        lit={lit}
+        itemSay={itemSay}
+        onUse={spendItem}
+        onBuy={(id) => gameRef.current?.buy(id)}
+        onPutBack={(slot) => gameRef.current?.putBack(slot)}
         best={best}
         bestAt={bestAt}
         pointAt={picked ?? line?.point}

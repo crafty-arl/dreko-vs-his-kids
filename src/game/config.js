@@ -90,6 +90,28 @@ export const TASK = { doneMs: 500 }
 // kid has two needs, so the "Oh wait, I forgot something!" walk back is in it too. A draft to tune.
 export const TUTOR = { needs: { Tix: ['breakfast'], Zhar: ['lunch'], Pobo: ['backpack', 'jacket'] } }
 
+// The market (Carl, Nov 23: a marketplace in between, "to add strategy and points to spend in order to last
+// different weeks", and "the shop should be item based"). It opens after every morning that is won.
+// `points`: what a won morning pays: `won` for winning it, `perTryLeft` for each try not used, and `perSecond`
+// for each whole second left on the clock, up to `mostSeconds` of them (a later try has a long clock).
+// Points and what is in Dreko's pockets carry over from morning to morning and are gone at game over.
+// `pockets` is how many things he can carry. Each thing is used once, when the player picks the moment.
+// The five things are the ones Carl picked on Nov 23. Every number and every word here is a draft to tune.
+// skates: Dreko walks `faster` times as fast until that day is done. watch: the bus clock stops for `seconds`.
+// whistle: every kid walking around stands still for `seconds`. coin: once the bus is at the stop, it waits
+// `seconds` more. candy: the kid Dreko is standing next to does their own need.
+export const MARKET = {
+  points: { won: 4, perTryLeft: 3, perSecond: 1, mostSeconds: 6 },
+  pockets: 3,
+  items: {
+    skates: { name: 'Roller skates', does: 'Dreko is faster until the day is done', price: 6, faster: 1.35 },
+    watch: { name: 'Pocket watch', does: 'The clock stops for 5 seconds', price: 5, seconds: 5 },
+    whistle: { name: 'Whistle', does: 'Kids on the move stand still for 5 seconds', price: 4, seconds: 5 },
+    coin: { name: 'Coin for the driver', does: 'The bus waits 5 more seconds', price: 5, seconds: 5 },
+    candy: { name: 'Piece of candy', does: 'One kid does their own need', price: 7 },
+  },
+}
+
 // The look of the screen overlay, as Carl picked on Nov 20: colour, with painted icons in the game's pen and
 // watercolour look.
 // icons: 'painted' (pictures from public/art/icons/, inked where one is missing), 'inked' (wobbly pen line

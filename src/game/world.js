@@ -2,7 +2,7 @@
 import * as THREE from 'three'
 import { GMThree, GMTiles } from '../engine/index.js'
 import { buildHouse, card, cutout, loadArt } from './art.js'
-import { ANXIETY, BUS, CAMERA, CLOCK, DREKO, GOLD, INK, PAPER, ROAM, ROOM_VIEW, TILE, TUTOR, WALK, WEEK, WORLD } from './config.js'
+import { ANXIETY, BUS, CAMERA, CLOCK, DREKO, GOLD, INK, MARKET, PAPER, ROAM, ROOM_VIEW, TILE, TUTOR, WALK, WEEK, WORLD } from './config.js'
 import { KIDS, kidArt } from './family.js'
 import { H, OUTSIDE, PLACES, PROPS, ROAD_Y, ROWS, SHEETS, SMALL, SOLID, SPOTS, W, floorTiles, placeName, zone } from './house.js'
 import { createInput } from './input.js'
@@ -195,11 +195,18 @@ export async function startGame(canvas, hooks = {}) {
   let held = null // the kid that task is for: they stand still too
   let tutorial = false // true in How to play: a practice morning, and the bus clock does not run
   let near = null
+  // The market (config.js MARKET): `points` to spend, `pockets` the things Dreko carries (their ids, in order),
+  // `gained` what the last won morning paid. While `skates` is on he is faster. `stopMs` is how much longer the
+  // bus clock is stopped (the pocket watch) and `stillMs` how much longer the kids walking around stand still
+  // (the whistle).
+  const market = { points: 0, pockets: [], gained: null, skates: false, stopMs: 0, stillMs: 0 }
+  const tellMarket = () => hooks.onMarket?.({ points: market.points, pockets: market.pockets.slice(), gained: market.gained, skates: market.skates, stopped: market.stopMs > 0, still: market.stillMs > 0 })
+  const walkingAround = (k) => k.state === 'home' && k.roam && needs[k.kid.name].length > 0
   const tellClock = (force) => {
     const tick = Math.ceil(clock.left * 10)
     if (!force && tick === clock.told) return
     clock.told = tick
-    hooks.onClock?.({ phase: clock.phase, week: clock.week, day: clock.day, loop: clock.loop, total: clock.total, left: clock.left, boarded: clock.boarded, earned: clock.earned, scene: !!bus.scene, worry: worry(), tutorial })
+    hooks.onClock?.({ phase: clock.phase, week: clock.week, day: clock.day, loop: clock.loop, total: clock.total, left: clock.left, boarded: clock.boarded, earned: clock.earned, scene: !!bus.scene, worry: worry(), tutorial, stopped: market.stopMs > 0 })
   }
   const tellReady = () => {
     const out = {}
@@ -228,6 +235,16 @@ export async function startGame(canvas, hooks = {}) {
     clock.phase = 'dayWon'
     const [w, d] = dayAfter(clock.week, clock.day)
     say(`All ten are counted with ${clock.left.toFixed(1)} seconds to spare, on try ${clock.loop} of ${WEEK.tries}. ${WEEK.days[clock.day]} is done${w > clock.week ? `, and so is week ${clock.week + 1}` : ''}. Next is ${WEEK.days[d]}${w > 0 ? ` of week ${w + 1}` : ''}.`)
+    // a won morning pays points for the market: for the win, for each try not used and for the seconds left
+    if (!tutorial) {
+      const P = MARKET.points
+      const tries = P.perTryLeft * (WEEK.tries - clock.loop)
+      const seconds = P.perSecond * Math.min(P.mostSeconds, Math.floor(Math.max(0, clock.left)))
+      market.gained = { won: P.won, tries, seconds, total: P.won + tries + seconds }
+      market.points += market.gained.total
+      tellMarket()
+      say(`Points for the market: ${P.won} for the morning, ${tries} for ${WEEK.tries - clock.loop} ${WEEK.tries - clock.loop === 1 ? 'try' : 'tries'} not used, ${seconds} for the seconds left (at most ${P.mostSeconds}). That is ${market.gained.total}, so Dreko has ${market.points}.`)
+    }
     dreko.path = null
     busScene()
     tellClock(true)
@@ -334,6 +351,12 @@ export async function startGame(canvas, hooks = {}) {
     clock.phase = kind === 'fresh' || tutorial ? 'ready' : 'run'
     clock.boarded = 0
     clock.earned = 0
+    // from scratch: the points and the pockets are gone. The skates come off when the day is done.
+    if (kind === 'fresh' || tutorial) Object.assign(market, { points: 0, pockets: [], gained: null })
+    if (kind !== 'retry') market.skates = false
+    market.stopMs = 0
+    market.stillMs = 0
+    tellMarket()
     if (kind !== 'retry') {
       // a new day: new needs, and more of them
       for (const name in known) delete known[name]
@@ -524,7 +547,22 @@ export async function startGame(canvas, hooks = {}) {
         say('Dreko moved, so the bus clock starts.')
       }
     } else if (clock.phase === 'run' && !clock.paused) {
-      if (!tutorial) clock.left -= dt / 1000 // the practice morning has no clock
+      // the practice morning has no clock, and the pocket watch stops it for a while
+      if (market.stopMs > 0) {
+        market.stopMs = Math.max(0, market.stopMs - dt)
+        if (!market.stopMs) {
+          tellMarket()
+          tellClock(true)
+          say('The pocket watch has run down: the bus clock runs again.')
+        }
+      } else if (!tutorial) clock.left -= dt / 1000
+      if (market.stillMs > 0) {
+        market.stillMs = Math.max(0, market.stillMs - dt)
+        if (!market.stillMs) {
+          tellMarket()
+          say('The whistle has worn off: the kids walk around again.')
+        }
+      }
       stress = Math.max(0, stress - (ANXIETY.settle * dt) / 1000)
       // sweat flies off him when he is very anxious, faster the worse it is
       const w = worry()
@@ -556,11 +594,12 @@ export async function startGame(canvas, hooks = {}) {
     dreko.moving = false
     // he eases up to speed instead of snapping to it
     dreko.go = ix || iy || dreko.path ? Math.min(1, dreko.go + dt / WALK.easeMs) : 0
+    const speed = DREKO.speed * (market.skates ? MARKET.items.skates.faster : 1) // on roller skates he is faster
     if (ix || iy) {
       // the stick is read against the screen, then turned into tiles
       dreko.path = null
       side = ix / Math.hypot(ix, iy)
-      const k = (DREKO.speed * dreko.go * dt) / 1000 / Math.SQRT2
+      const k = (speed * dreko.go * dt) / 1000 / Math.SQRT2
       const dx = (ix - iy) * k
       const dy = (-ix - iy) * k
       let [x, y] = dreko.at
@@ -573,7 +612,7 @@ export async function startGame(canvas, hooks = {}) {
       // and he slows into the last third of a tile instead of stopping dead
       const left = (dreko.len - dreko.gone) / TILE
       const pace = dreko.go * Math.max(0.3, Math.min(1, left / 0.35))
-      dreko.gone += (DREKO.speed * pace * dt * TILE) / 1000
+      dreko.gone += (speed * pace * dt * TILE) / 1000
       const f = Math.min(1, dreko.gone / dreko.len)
       const p = GMTiles.along(dreko.path, f)
       const next = [p[0] / TILE, p[1] / TILE]
@@ -708,6 +747,8 @@ export async function startGame(canvas, hooks = {}) {
       if (k.wait <= 0) sendBack(k)
     } else if (k.state === 'stop') {
       // waiting for the bus
+    } else if (market.stillMs > 0 && walkingAround(k)) {
+      // the whistle: a kid who was walking around stands still, wherever they are
     } else if (k.roam && !walkTest && needs[name].length && (clock.phase === 'run' || clock.phase === 'ready')) {
       // walking around: a pause, then off to another tile of the room (or of the house)
       if (!k.path) {
@@ -936,6 +977,68 @@ export async function startGame(canvas, hooks = {}) {
     view.resize(w, h)
   }
 
+  // A kid's need is done: with Dreko's mini task, or (`how`) some other way. The kid heads for the bus; if they
+  // have one more need today, it comes to mind at the bus stop.
+  function meet(name, how) {
+    const k = kids.find((x) => x.kid.name === name)
+    if (!k || !reachable(k)) return false
+    const id = needs[name].shift()
+    tellNeeds()
+    tellKnown()
+    if (!needs[name].length) {
+      calm(`${name} is counted, which takes ${Math.round(ANXIETY.perCounted * 100)} off.`)
+      hooks.onCounted?.(name)
+    }
+    say(`${name}: ${NEEDS[id]} done with ${how ?? MOVE_NAMES[MOVES[id].move]}. ${needs[name].length ? `${name} walks to the bus stop. Not remembered yet: ${NEEDS[needs[name][0]]}, in the ${roomName(needs[name][0])}.` : `Nothing left, so ${name} counts for the bus now: ${counted()} of ${kids.length}. ${name} walks to the stop.`}`)
+    sendToStop(k)
+    return true
+  }
+
+  // The market is open on the "day done" card, once the bus has gone (never in the practice morning).
+  const shopOpen = () => clock.phase === 'dayWon' && !tutorial && !bus.scene
+  // Dreko uses the thing in pocket `slot` (0 is the first). It is used up, unless it cannot be used right now:
+  // then it stays in his pocket and the player is told why.
+  function useItem(slot) {
+    const id = market.pockets[slot]
+    const item = MARKET.items[id]
+    if (!item) return { ok: false }
+    const no = (text) => {
+      hooks.onItem?.({ id, ok: false, text })
+      return { ok: false, text }
+    }
+    if (tutorial || busy || hold || clock.paused || (clock.phase !== 'run' && clock.phase !== 'ready')) return no('Not right now')
+    let text = ''
+    if (id === 'skates') {
+      if (market.skates) return no('The skates are already on')
+      market.skates = true
+      text = 'Skates on. Dreko is faster until the day is done.'
+    } else if (id === 'watch') {
+      if (clock.phase !== 'run') return no('The clock is not running yet')
+      market.stopMs += item.seconds * 1000
+      text = `The clock stops for ${item.seconds} seconds.`
+    } else if (id === 'whistle') {
+      const n = kids.filter(walkingAround).length
+      if (!n) return no('No kid is walking around right now')
+      market.stillMs = item.seconds * 1000
+      text = `${n === 1 ? '1 kid stands' : `${n} kids stand`} still for ${item.seconds} seconds.`
+    } else if (id === 'coin') {
+      if (clock.phase !== 'run' || clock.left > BUS.comeAt) return no('The bus is not here yet')
+      clock.left += item.seconds
+      text = `The driver takes the coin. The bus waits ${item.seconds} more seconds.`
+    } else if (id === 'candy') {
+      const name = near
+      const need = name && needs[name]?.[0]
+      if (!need || !meet(name, 'a piece of candy')) return no('Walk up to a kid first')
+      text = `${name} takes the candy and does it alone: ${NEEDS[need]}.`
+    }
+    market.pockets.splice(slot, 1)
+    tellMarket()
+    tellClock(true)
+    hooks.onItem?.({ id, ok: true, text })
+    say(`Dreko uses the ${item.name.toLowerCase()}. ${text}`)
+    return { ok: true, text }
+  }
+
   requestAnimationFrame(frame)
 
   return {
@@ -956,19 +1059,33 @@ export async function startGame(canvas, hooks = {}) {
     },
     // Dreko finished a kid's mini task: that need is done, and the kid heads for the bus. If they have one
     // more need today, it comes to mind at the bus stop.
-    needMet(name) {
-      const k = kids.find((x) => x.kid.name === name)
-      if (!k || !reachable(k)) return
-      const id = needs[name].shift()
-      tellNeeds()
-      tellKnown()
-      if (!needs[name].length) {
-        calm(`${name} is counted, which takes ${Math.round(ANXIETY.perCounted * 100)} off.`)
-        hooks.onCounted?.(name)
-      }
-      say(`${name}: ${NEEDS[id]} done with ${MOVE_NAMES[MOVES[id].move]}. ${needs[name].length ? `${name} walks to the bus stop. Not remembered yet: ${NEEDS[needs[name][0]]}, in the ${roomName(needs[name][0])}.` : `Nothing left, so ${name} counts for the bus now: ${counted()} of ${kids.length}. ${name} walks to the stop.`}`)
-      sendToStop(k)
+    needMet(name) { meet(name) },
+    // The market, between two mornings: buy a thing for Dreko's pockets, or put one back for what it cost.
+    buy(id) {
+      const item = MARKET.items[id]
+      if (!item || !shopOpen()) return { ok: false }
+      if (market.pockets.length >= MARKET.pockets) return { ok: false, text: 'His pockets are full' }
+      if (market.points < item.price) return { ok: false, text: 'Not enough points' }
+      market.points -= item.price
+      market.pockets.push(id)
+      tellMarket()
+      say(`Market: Dreko buys the ${item.name.toLowerCase()} for ${item.price} points. ${market.points} left. In his pockets: ${market.pockets.map((x) => MARKET.items[x].name).join(', ')}.`)
+      return { ok: true }
     },
+    putBack(slot) {
+      const item = MARKET.items[market.pockets[slot]]
+      if (!item || !shopOpen()) return { ok: false }
+      market.pockets.splice(slot, 1)
+      market.points += item.price
+      tellMarket()
+      say(`Market: Dreko puts the ${item.name.toLowerCase()} back and gets his ${item.price} points back. He has ${market.points}.`)
+      return { ok: true }
+    },
+    // in the house: use the thing in pocket `slot`
+    useItem,
+    // for tests: put a thing in his pocket, or hand him points
+    give(id) { if (MARKET.items[id]) { market.pockets.push(id); tellMarket() } },
+    addPoints(n) { market.points += n; tellMarket() },
     playAgain() { nextMorning('fresh') },
     // How to play: the practice morning (src/game/Tutorial.jsx talks the player through it)
     startTutorial() { nextMorning('tutorial') },
@@ -1015,7 +1132,7 @@ export async function startGame(canvas, hooks = {}) {
     // for tests: look at any place from any distance (the angle never changes); no argument gives the game's camera back
     spy: (at, dist) => (spy = at ? { at, dist } : null),
     // for tests and for the next systems (needs, clock): where things are right now
-    state: () => ({ worry: worry(), drops: drops.length, bus: { x: bus.x, scene: bus.scene }, mom: { at: mom.at.slice(), look: mom.look }, dreko: dreko.at.slice(), place, moving: dreko.moving, known: Object.keys(known), told: { ...known }, rooms: Object.fromEntries(kids.map((k) => [k.kid.name, needs[k.kid.name].length ? ROOM_OF[needs[k.kid.name][0]] : null])), spots: Object.fromEntries(kids.map((k) => [k.kid.name, k.spot.slice()])), plan: JSON.parse(JSON.stringify(spots)), deal: copy(deal), solid: kids.filter((k) => k.state === 'home' && k.solid).map((k) => k.kid.name), at: Object.fromEntries(kids.map((k) => [k.kid.name, k.at.slice()])), clock: { tutorial, phase: clock.phase, week: clock.week, day: clock.day, loop: clock.loop, level: { ...level }, left: clock.left, total: clock.total, boarded: clock.boarded, earned: clock.earned }, near, needs: copy(needs), kids: Object.fromEntries(kids.map((k) => [k.kid.name, k.state])) }),
+    state: () => ({ worry: worry(), drops: drops.length, bus: { x: bus.x, scene: bus.scene }, mom: { at: mom.at.slice(), look: mom.look }, dreko: dreko.at.slice(), place, moving: dreko.moving, known: Object.keys(known), told: { ...known }, rooms: Object.fromEntries(kids.map((k) => [k.kid.name, needs[k.kid.name].length ? ROOM_OF[needs[k.kid.name][0]] : null])), spots: Object.fromEntries(kids.map((k) => [k.kid.name, k.spot.slice()])), plan: JSON.parse(JSON.stringify(spots)), deal: copy(deal), solid: kids.filter((k) => k.state === 'home' && k.solid).map((k) => k.kid.name), at: Object.fromEntries(kids.map((k) => [k.kid.name, k.at.slice()])), clock: { tutorial, phase: clock.phase, week: clock.week, day: clock.day, loop: clock.loop, level: { ...level }, left: clock.left, total: clock.total, boarded: clock.boarded, earned: clock.earned }, near, market: { ...market, pockets: market.pockets.slice() }, needs: copy(needs), kids: Object.fromEntries(kids.map((k) => [k.kid.name, k.state])) }),
     stop() {
       stopped = true
       input.stop()

@@ -5,6 +5,7 @@ import { dayAfter, levelOf } from './level.js'
 import { KIDS } from './family.js'
 import { Icon, InkFilter } from './Icon.jsx'
 import { PLACES } from './house.js'
+import Market, { Pockets } from './Market.jsx'
 import { NEEDS, ROOM_OF } from './needs.js'
 import { BestTries } from './Title.jsx'
 import { TutorialDone } from './Tutorial.jsx'
@@ -20,7 +21,7 @@ const clockText = (seconds) => `${Math.floor(seconds / 60)}:${String(Math.ceil(s
 // bus, at the stop remembering one more need, on the way back in, or waiting for the bus.
 // helping: the kid Dreko can help right now, if any.
 // bubbleRefs: one ref per kid, in KIDS order; the game moves them every frame.
-export default function Overlay({ place, known, needs, ready, helping, clock, worry, calm, listOpen, onToggleList, onHelp, onPlayAgain, onContinue, best = [], bestAt = -1, pointAt, onTitle, counted = 0, onPick, bubbleRefs, settings, children }) {
+export default function Overlay({ place, known, needs, ready, helping, clock, worry, calm, listOpen, onToggleList, onHelp, onPlayAgain, onContinue, best = [], bestAt = -1, pointAt, onTitle, counted = 0, onPick, market, shop, lit = 0, itemSay, onUse, onBuy, onPutBack, bubbleRefs, settings, children }) {
   const over = clock.phase === 'left' || clock.phase === 'over' || clock.phase === 'dayWon'
   const left = (kid) => needs[kid.name] ?? []
   const needOf = (kid) => left(kid)[0]
@@ -74,7 +75,7 @@ export default function Overlay({ place, known, needs, ready, helping, clock, wo
 
       <header className="hud">
         <div className="hud-side">
-          <div className={`chip ${hurry ? 'chip-hurry' : ''}`} role="timer" aria-label={`Bus leaves in ${Math.ceil(timeLeft)} seconds`}>
+          <div className={`chip ${hurry ? 'chip-hurry' : ''} ${clock.stopped ? 'chip-stopped' : ''}`} role="timer" aria-label={`Bus leaves in ${Math.ceil(timeLeft)} seconds`}>
             <Icon name="clock" wash="gold" />
             <span className="num">{clockText(timeLeft)}</span>
             <span className="bar"><i style={{ width: `${Math.max(0, Math.min(1, timeLeft / clock.total)) * 100}%` }} /></span>
@@ -101,6 +102,9 @@ export default function Overlay({ place, known, needs, ready, helping, clock, wo
           {children}
         </div>
       </header>
+
+      {/* the things from the market that Dreko carries: tap one to use it */}
+      {market && !over && !listOpen && !clock.tutorial && <Pockets market={market} lit={lit} say={itemSay} onUse={onUse} />}
 
       <footer className="hints">
         <div className="hint"><span className="key key-stick"><Icon name="stick" /></span>Walk</div>
@@ -146,7 +150,10 @@ export default function Overlay({ place, known, needs, ready, helping, clock, wo
 
       {/* a day done: all ten boarded, and the next day is harder */}
       {clock.phase === 'dayWon' && !clock.scene && clock.tutorial && <TutorialDone onStart={onContinue} onTitle={onTitle} />}
-      {clock.phase === 'dayWon' && !clock.scene && !clock.tutorial && (
+      {clock.phase === 'dayWon' && !clock.scene && !clock.tutorial && shop && market && (
+        <Market market={market} nextDay={nextDay} onBuy={onBuy} onPutBack={onPutBack} onGo={onContinue} />
+      )}
+      {clock.phase === 'dayWon' && !clock.scene && !clock.tutorial && !shop && (
         <div className="list" role="status">
           <div className="panel panel-bus">
             <h2>{nextWeek > week ? `Week ${week + 1} done` : `${day} done`}</h2>
@@ -154,7 +161,11 @@ export default function Overlay({ place, known, needs, ready, helping, clock, wo
             {/* the words of the week's end are a stand-in for the ending from the game map: the driver nods, mom is watching */}
             {nextWeek > week && <p>The driver gives Dreko a nod. Across the street, Mom saw the whole thing.</p>}
             <p>Next: {nextDay}{nextWeek > 0 ? ` of week ${nextWeek + 1}` : ''}, with {nextLevel.needs} needs{nextWeek > 0 ? ` and ${nextLevel.seconds} seconds` : ''}.</p>
-            <button type="button" className="close again" onClick={onContinue} autoFocus><span className="key key-a">A</span>Continue</button>
+            {/* what the morning paid for the market */}
+            {market?.gained && (
+              <p className="gained"><b>+{market.gained.total} points</b><small>{market.gained.won} for the morning, {market.gained.tries} for tries not used, {market.gained.seconds} for seconds left</small></p>
+            )}
+            <button type="button" className="close again" onClick={onContinue} autoFocus><span className="key key-a">A</span>To the market</button>
           </div>
         </div>
       )}

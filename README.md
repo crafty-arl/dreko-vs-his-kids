@@ -47,6 +47,13 @@ An entry for **Tiny Loop Jam 2026**. The jam window runs from Nov 20, 18:00 UTC 
 - Kids on the move (`ROAM` in `src/game/config.js`): on Thursday and Friday the kids walk around the room of their need instead of standing still, so Dreko has to catch one to help them. A kid stands still while their task is open.
 - The rules log: the **Log** button (or `?log` in the address) lists every rule as it fires, newest first, with the day, the try and the clock: the deal, a need told, a task opened, a miss, a need done, a kid at the stop, a kid who forgot something, the bus leaving and the time earned. It is a tool for checking the game.
 - Sound (`src/game/sound.js`): `menu.mp3` loops through the whole game. On top of it, the tick-tock plays for the last 10 seconds before the bus, `Bus-lose.mp3` while the "bus left" card is up, and `Bus-win.mp3` on the win. The menu music fades out under those last two and comes back after. Nothing plays until the first tap or key, as browsers ask. The **Sound** button turns it off and on. `Dad-died.mp3` has no moment in the game yet.
+- The market (`src/game/Market.jsx`, numbers in `config.js` MARKET): a morning that is won pays points (4 for the morning, 3 for each try not used, 1 for each second left, at most 6 seconds). After the "day done" card the market opens, and points buy things for Dreko's three pockets. Points and pockets carry over from morning to morning and are gone at game over. In the house each thing is used once, when the player picks: tap it, press 1, 2 or 3, or on a controller LB moves to the next pocket and RB uses it. A thing that cannot be used right now stays in the pocket and says why.
+  - Roller skates: Dreko is faster until that day is done.
+  - Pocket watch: the bus clock stops for 5 seconds.
+  - Whistle: every kid walking around stands still for 5 seconds.
+  - Coin for the driver: once the bus is at the stop, it waits 5 more seconds.
+  - Piece of candy: the kid Dreko is standing next to does their own need.
+  - The five things are Carl's pick (Nov 23). Their prices, numbers and words are drafts, their icons are line drawings standing in for painted pictures, and the spot for the character who runs the market is empty until Carl makes that character.
 
 Not in yet: each need's own task pictures, the ending screen, drawn walking frames, and sound effects (steps, task done, kid boards).
 

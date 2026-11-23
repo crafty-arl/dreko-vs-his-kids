@@ -70,6 +70,7 @@ export function TutorialDone({ onStart, onTitle }) {
           <li>Dreko remembers what each kid needs. Every kid he got ready adds {CLOCK.perKid} seconds to the next try.</li>
           <li>Every morning has more needs, and later the kids walk around.</li>
           <li>The red bar is his anxiety. When it is high, his hands shake in the tasks.</li>
+          <li>A morning you win pays points. Spend them at the market on things for Dreko's pockets, and use each one once.</li>
         </ul>
         <button type="button" className="close again" onClick={onStart} autoFocus><span className="key key-a">A</span>Start the game</button>
         <button type="button" className="close task-close" onClick={onTitle}>Back to the title</button>

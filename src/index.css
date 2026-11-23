@@ -1063,3 +1063,85 @@ body,
 @media (prefers-reduced-motion: reduce) {
   .pop { animation-duration: 1.9s; }
 }
+
+/* The market (Carl, Nov 23): the card between two mornings, and Dreko's pockets in the house */
+.panel-bus p.gained { margin-top: 12px; padding: 8px 10px; border: 2px solid var(--ink); border-radius: 14px; background: var(--gold); }
+.gained b { display: block; font-size: 20px; }
+.gained small { display: block; font-size: 12px; font-weight: 600; }
+.panel-market { width: min(100%, 400px); text-align: left; }
+.market-who { display: flex; align-items: center; gap: 12px; }
+.market-ghost {
+  flex: none; width: 76px; height: 92px; display: grid; place-items: center; padding: 6px; box-sizing: border-box;
+  border: 2px dashed var(--ink); border-radius: 14px; text-align: center; font-size: 10px; font-weight: 800; line-height: 1.2; text-transform: uppercase;
+  background: repeating-linear-gradient(45deg, #e4e0d6 0 8px, #d8d3c7 8px 16px);
+}
+.panel-bus p.market-points { display: inline-block; margin-top: 8px; padding: 4px 12px; border: 2px solid var(--ink); border-radius: 999px; background: var(--gold); font-weight: 800; }
+.shelf { display: grid; gap: 6px; margin: 12px 0 0; padding: 0; list-style: none; }
+.thing {
+  width: 100%; min-height: 52px; display: grid; grid-template-columns: 36px 1fr auto; align-items: center; gap: 10px; padding: 6px 10px;
+  border: 2px solid var(--ink); border-radius: 14px; background: #fff; color: var(--ink); font: inherit; text-align: left; cursor: pointer;
+}
+.thing .icon { width: 34px; height: 34px; }
+.thing b { display: block; font-size: 15px; }
+.thing em { display: block; font-style: normal; font-size: 12px; font-weight: 600; opacity: 0.72; line-height: 1.25; }
+.thing .price { min-width: 34px; padding: 5px 10px; border-radius: 999px; background: var(--ink); color: var(--paper); font-weight: 800; font-size: 15px; text-align: center; }
+.thing:disabled { cursor: default; opacity: 0.45; }
+.thing:focus-visible, .pocket:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+.market-pockets { margin-top: 12px; padding-top: 10px; border-top: 2px solid var(--ink); }
+.market-pockets h3 { margin: 0 0 8px; font: 400 17px/1 Anton, Impact, 'Arial Narrow', sans-serif; letter-spacing: 0.04em; text-transform: uppercase; }
+.panel-bus p.market-tip { margin: 8px 0 0; font-size: 12px; opacity: 0.75; }
+.panel-market .close.again { margin-top: 12px; }
+.pocket-slots { display: flex; align-items: center; gap: 8px; }
+.pocket {
+  position: relative; flex: none; width: 50px; height: 50px; display: grid; place-items: center; padding: 0;
+  border: 2px solid var(--ink); border-radius: 14px; background: #fff; color: var(--ink); font: inherit; cursor: pointer; pointer-events: auto;
+}
+.pocket .icon { width: 34px; height: 34px; }
+.pocket-empty { border-style: dashed; background: transparent; cursor: default; }
+.pocket-lit { box-shadow: 0 0 0 3px var(--gold); }
+.pocket-key {
+  position: absolute; right: -6px; top: -6px; width: 20px; height: 20px; display: grid; place-items: center;
+  border-radius: 50%; background: var(--ink); color: var(--paper); font-size: 12px; font-weight: 800;
+}
+/* in the house the pockets sit over the hints, on the left */
+.pockets { position: absolute; left: max(10px, env(safe-area-inset-left)); bottom: calc(max(10px, env(safe-area-inset-bottom)) + 58px); z-index: 2; }
+.pocket-on { display: flex; align-items: center; gap: 4px; padding: 4px 10px 4px 6px; border: 2px solid var(--ink); border-radius: 999px; background: var(--gold); font-size: 12px; font-weight: 800; }
+.pocket-on .icon { width: 22px; height: 22px; }
+.item-say {
+  width: fit-content; max-width: min(78vw, 300px); margin: 0 0 8px; padding: 6px 12px; border: 2px solid var(--ink); border-radius: 14px;
+  background: var(--gold); font-size: 14px; font-weight: 700; animation: item-say 2.6s ease-out forwards;
+}
+.item-say-no { background: var(--paper); }
+@keyframes item-say {
+  0% { opacity: 0; transform: translateY(6px); }
+  8%, 85% { opacity: 1; transform: none; }
+  100% { opacity: 0; }
+}
+/* the pocket watch: the clock is stopped */
+.chip-stopped { border-style: dashed; background: var(--gold); animation: none; }
+@media (min-width: 700px) {
+  .panel-market { width: min(100%, 660px); }
+  .shelf { grid-template-columns: 1fr 1fr; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .item-say { animation: none; }
+}
+/* a low, wide screen (a phone on its side, the Odin): the market fits without scrolling */
+@media (max-height: 520px) {
+  .panel-market { width: min(100%, 800px); padding: 10px 14px; }
+  .market-who > div:last-child { display: flex; align-items: center; gap: 14px; }
+  .market-who h2 { font-size: 28px; }
+  .panel-bus p.market-points { margin-top: 0; }
+  .market-ghost { width: 50px; height: 50px; padding: 3px; border-radius: 10px; font-size: 7px; }
+  .shelf { grid-template-columns: repeat(3, 1fr); margin-top: 8px; }
+  .thing { grid-template-columns: 30px 1fr auto; gap: 8px; padding: 5px 8px; }
+  .thing .icon { width: 30px; height: 30px; }
+  .thing b { font-size: 14px; }
+  .thing .price { min-width: 22px; padding: 4px 9px; font-size: 14px; }
+  .market-pockets { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin-top: 8px; padding-top: 8px; }
+  .market-pockets h3 { margin: 0; }
+  .market-pockets .pocket { width: 44px; height: 44px; }
+  .market-pockets .pocket .icon { width: 30px; height: 30px; }
+  .panel-bus p.market-tip { flex: 1 1 200px; margin: 0; }
+  .panel-market .close.again { margin-top: 8px; }
+}

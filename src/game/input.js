@@ -29,10 +29,10 @@ export function createInput(target = window) {
     return len > 1 ? [x / len, y / len] : [x, y]
   }
 
-  // Controller buttons that were pressed since the last call: 'a', 'b', 'y' or 'start', and 'up', 'down',
+  // Controller buttons that were pressed since the last call: 'a', 'b', 'y', 'start', 'lb' or 'rb', and 'up', 'down',
   // 'left' or 'right' for a press of the D-pad or a firm push of the stick (the menus use these).
   // Nothing comes out while Settings is learning a controller's buttons.
-  const BUTTONS = ['a', 'b', 'y', 'start']
+  const BUTTONS = ['a', 'b', 'y', 'start', 'lb', 'rb']
   const held = new Set()
   function taps() {
     const out = []
