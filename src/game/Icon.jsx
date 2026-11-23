@@ -24,7 +24,7 @@ const SHAPES = {
   sweat: (<><path d="M16 4c5 7 8 10.500 8 15a8 8 0 0 1-16 0c0-4.500 3-8 8-15z" /><path d="M12.500 20a3.600 3.600 0 0 0 3 3.400" /></>),
   tick: (<path d="M6 17l6.500 6.500L26 9" strokeWidth="3.400" />),
   stick: (<><circle cx="16" cy="16" r="12" /><circle cx="16" cy="16" r="5" fill="currentColor" /></>),
-  // the things from the market: line drawings standing in until each has a painted picture
+  // the things from the market (painted on Nov 23; these line shapes are what the 'inked' and 'plain' looks use)
   skates: (<><path d="M9 4h8v9l7 2.500a4 4 0 0 1 3 3.800V21H9z" /><path d="M9 9h5M9 13h5" /><path d="M6 21h23" /><circle cx="11" cy="26" r="2.800" /><circle cx="24" cy="26" r="2.800" /></>),
   watch: (<><circle cx="16" cy="19" r="9.500" /><path d="M16 9.500V7" /><circle cx="16" cy="4.500" r="2.300" /><path d="M16 13.500V19l3.500 2.500" /><circle cx="16" cy="19" r="1" {...dot} /></>),
   whistle: (<><circle cx="12" cy="20" r="7.500" /><path d="M16 13.500h12v5.500h-8.500" /><circle cx="12" cy="20" r="2.200" {...dot} /><path d="M10 12.800V9" /><circle cx="10" cy="6.500" r="2.300" /></>),
@@ -34,7 +34,7 @@ const SHAPES = {
 
 // Painted icons (pen and watercolour pictures in public/art/icons/). List a name here once its picture is in;
 // anything not listed falls back to the line shape above ('shoes' has no painted picture yet).
-const PAINTED = ['lunch', 'slip', 'braids', 'homework', 'socks', 'teeth', 'jacket', 'show', 'breakfast', 'backpack', 'ask', 'clock', 'bus', 'sweat', 'tick', 'stick']
+const PAINTED = ['lunch', 'slip', 'braids', 'homework', 'socks', 'teeth', 'jacket', 'show', 'breakfast', 'backpack', 'ask', 'clock', 'bus', 'sweat', 'tick', 'stick', 'skates', 'watch', 'whistle', 'coin', 'candy']
 
 // wash: which colour sits behind an inked icon ('need', 'gold', 'red', 'green'), or nothing
 export function Icon({ name, wash, className = '' }) {

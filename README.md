@@ -53,7 +53,7 @@ An entry for **Tiny Loop Jam 2026**. The jam window runs from Nov 20, 18:00 UTC 
   - Whistle: every kid walking around stands still for 5 seconds.
   - Coin for the driver: once the bus is at the stop, it waits 5 more seconds.
   - Piece of candy: the kid Dreko is standing next to does their own need.
-  - The five things are Carl's pick (Nov 23). Their prices, numbers and words are drafts, their icons are line drawings standing in for painted pictures, and the spot for the character who runs the market is empty until Carl makes that character.
+  - The five things are Carl's pick (Nov 23). Their prices, numbers and words are drafts, their icons are painted in the same pen and watercolour look as the need icons (`public/art/icons/`), and the spot for the character who runs the market is empty until Carl makes that character.
 
 Not in yet: each need's own task pictures, the ending screen, drawn walking frames, and sound effects (steps, task done, kid boards).
 
