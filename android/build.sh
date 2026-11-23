@@ -5,6 +5,7 @@
 set -e
 cd "$(dirname "$0")"
 [ -z "$JAVA_HOME" ] && [ -d /opt/homebrew/opt/openjdk@21 ] && export JAVA_HOME=/opt/homebrew/opt/openjdk@21
+[ -z "$ANDROID_HOME" ] && [ -d "$HOME/Library/Android/sdk" ] && export ANDROID_HOME="$HOME/Library/Android/sdk"   # no local.properties here
 BROWSER=~/gm-browser-android
 if [ ! -x ./gradlew ] && [ -x "$BROWSER/gradlew" ]; then
     cp "$BROWSER/gradlew" . && mkdir -p gradle && cp -R "$BROWSER/gradle/wrapper" gradle/
