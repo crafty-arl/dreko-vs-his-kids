@@ -74,10 +74,28 @@ export async function startGame(canvas, hooks = {}) {
     const [c, wide] = card(im, flip && !im.standIn, im.standIn ? 0 : lean)
     return { img: c, wide: wide * narrow, size: (size * c.height) / im.height }
   }
+  // where each piece of furniture's card stands, and how it takes its turn with the people around it: a flat card
+  // cuts across the floor beside a wide thing, so the engine lets a thing lie `back` toward the floor and the west
+  // and north walls of its room (gm-three.js). A thing against one of those walls has nobody behind it and lies
+  // all the way back; a thing out in the room (the table, the chairs) lies back by about its own width, so someone
+  // in front of it is in front and someone behind it is still behind. Things outside are left as they are.
+  const stood = {}
+  for (const p of PROPS) {
+    const s = shape(img[p.img], p)
+    const wide = s.size * s.wide
+    const near = wide / (2 * Math.SQRT2)
+    const mid = p.mid ?? [p.at[0] + 0.5, p.at[1] + 0.5]
+    const box = PLACES[zone(...p.at)]?.box
+    const indoors = box && ['kitchen', 'bath', 'cubby', 'hall'].includes(zone(...p.at))
+    const onWall = indoors && [p.at, ...(p.more ?? [])].some(([x, y]) => x === box[0] || y === box[1])
+    stood[p.id] = { shape: s, at: p.stand ?? [mid[0] + near, mid[1] + near], back: indoors ? { most: onWall ? 6 : wide, x: box[0] + M, y: box[1] + M } : null }
+  }
   const still = [
-    // furniture is drawn from its front corner, so its card stands a little toward the camera (south-east) of the tile's middle
-    ...PROPS.map((p) => ({ id: p.id, at: [p.at[0] + 0.5 + p.front + (p.shift?.[0] ?? 0), p.at[1] + 0.5 + p.front + (p.shift?.[1] ?? 0)], level: 0, ...shape(img[p.img], p) })),
-    ...SMALL.map((s) => ({ id: s.id, at: s.at, level: s.up, ...shape(img[s.img], s) })),
+    // furniture is drawn from the corner nearest the camera: its picture's lowest point. The card stands half the
+    // picture's width toward the camera (south-east) of the middle of the floor the thing covers, so that corner
+    // touches the floor where the thing's own near corner is
+    ...PROPS.map((p) => ({ id: p.id, at: stood[p.id].at, level: 0, back: stood[p.id].back, ...stood[p.id].shape })),
+    ...SMALL.map((s) => ({ id: s.id, at: s.at, level: s.up, back: stood[s.on]?.back, ...shape(img[s.img], s) })),
     // the still world around the home: trees, bushes, neighbour houses, street things
     ...OUTSIDE.map((o) => ({ id: o.id, at: o.at, level: 0, ...shape(img[o.img], o) })),
   ]
@@ -1138,6 +1156,11 @@ export async function startGame(canvas, hooks = {}) {
       clock.week = week
       clock.day = day - 1
       nextMorning('day')
+    },
+    // for tests: where a point of the house is on screen, in pixels (x and y in tiles, `up` in floors)
+    project(x, y, up = 0) {
+      const v = new THREE.Vector3(x + M, up, y + M).project(view.camera)
+      return [(v.x * 0.5 + 0.5) * size.w, (-v.y * 0.5 + 0.5) * size.h]
     },
     // for tests: look at any place from any distance (the angle never changes); no argument gives the game's camera back
     spy: (at, dist) => (spy = at ? { at, dist } : null),

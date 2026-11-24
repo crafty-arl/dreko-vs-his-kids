@@ -1,5 +1,5 @@
 // Copied from Carl's GM! 2.5D Map Engine (gmcarl repo, tools/gm-tiles/gm-three.js). Changes made for this game are
-// marked DREKO: an opts.smooth switch on create(), walls of any height up to one floor, opts.upright cut-outs, and wide + roll on a thing (for the shared walk).
+// marked DREKO: an opts.smooth switch on create(), walls of any height up to one floor, opts.upright cut-outs, wide + roll on a thing (for the shared walk), and back on a thing (wide furniture lies back toward its wall, so a person in front of it stays in front).
 //
 // gm-three: builds a real 3D scene (three.js) from a gm-tiles map with floors. The data map stays the truth; this
 // only draws it. Pass in THREE (any recent version, r150+); works as a <script> global (window.GMThree) or in Node.
@@ -184,11 +184,42 @@
       for (const t of oldTex.values()) t.dispose(); oldTex = new Map();
     }
 
-    const thingMats = new Map();
+    // DREKO: `back` on a thing: { most, x, y }. A standing card is flat, and a wide piece of furniture is drawn
+    // from its near corner, so its card cuts across the floor where someone can stand in front of it. A thing
+    // with `back` is drawn exactly where it is, but takes its turn in front or behind as if every bit of it lay
+    // back toward what is behind it in its room: the floor, the west wall (at x) and the north wall (at y), and
+    // never more than `most` tiles. So a person anywhere in front of a stove against the wall stays in front of
+    // it, and one behind a table (`most` about its width) is still behind it.
+    const thingMats = new Map(), backMats = new Map();
+    const laidBack = (mat, back) => {
+      const lim = new THREE.Vector3(back.most, back.x ?? -1e6, back.y ?? -1e6);
+      mat.onBeforeCompile = sh => {   // worked out for every dot of the picture, so it is exact along the whole card
+        sh.uniforms.gmBack = { value: lim };
+        sh.vertexShader = 'varying vec3 vGmW;\n' + sh.vertexShader.replace('#include <project_vertex>', '#include <project_vertex>\n  vGmW = ( modelMatrix * vec4( transformed, 1.0 ) ).xyz;');
+        sh.fragmentShader = 'uniform vec3 gmBack;\nuniform mat4 projectionMatrix;\nvarying vec3 vGmW;\n' + sh.fragmentShader.replace('#include <dithering_fragment>', `#include <dithering_fragment>
+        {
+          vec3 gmR = vGmW - cameraPosition;
+          float gmS = gmR.y < 0. ? max( vGmW.y, 0. ) / -gmR.y : 0.;
+          if ( gmR.x < 0. ) gmS = min( gmS, max( vGmW.x - gmBack.y, 0. ) / -gmR.x );
+          if ( gmR.z < 0. ) gmS = min( gmS, max( vGmW.z - gmBack.z, 0. ) / -gmR.z );
+          gmS *= 0.97;
+          float gmL = length( gmR ) * gmS;
+          if ( gmL > gmBack.x ) gmS *= gmBack.x / gmL;
+          vec4 gmFar = projectionMatrix * viewMatrix * vec4( vGmW + gmR * gmS, 1.0 );
+          gl_FragDepth = gmFar.z / gmFar.w * 0.5 + 0.5;
+        }`);
+      };
+      mat.customProgramCacheKey = () => 'gm-back';
+      return mat;
+    };
     function setThings(list) {
       things.children.slice().forEach(o => things.remove(o));
       for (const t of list) {
-        let mat = thingMats.get(t.img); if (!mat) thingMats.set(t.img, mat = new CutMat({ map: tex(t.img), alphaTest: .5, ...cutExtra }));
+        let mat;
+        if (t.back?.most > 0 && upright) {   // DREKO: back (furniture lies back toward its wall for who is in front of what)
+          const key = [t.back.most, t.back.x, t.back.y].join('|'); let byBack = backMats.get(t.img); if (!byBack) backMats.set(t.img, byBack = new Map());
+          mat = byBack.get(key); if (!mat) byBack.set(key, mat = laidBack(new CutMat({ map: tex(t.img), alphaTest: .5, ...cutExtra }), t.back));
+        } else { mat = thingMats.get(t.img); if (!mat) thingMats.set(t.img, mat = new CutMat({ map: tex(t.img), alphaTest: .5, ...cutExtra })); }
         const s = cutOut(mat), k = t.size || .9; s.scale.set(k * (t.wide ?? 1), k * (t.h ?? 1), 1); s.userData.tall = s.scale.y; if (upright) s.rotation.z = t.roll || 0;   /* DREKO: wide (squash, card turn) and roll (rock, lean) */
         s.position.set(t.at[0], t.level * 1, t.at[1]); s.userData.id = t.id; s.userData.level = t.level; things.add(s);
         if (t.ghost) {   // shows only where something hides it: the same shape in one colour, drawn where it is behind

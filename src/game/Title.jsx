@@ -103,7 +103,7 @@ function Credits({ onBack }) {
       <h2>Credits</h2>
       <dl className="credits">
         <dt>Made by</dt>
-        <dd>Carl Lewis and Tessa</dd>
+        <dd>Carl Lewis and Contessa Louise Cooper / auramation</dd>
         <dt>Made for</dt>
         <dd>Tiny Loop Jam 2026</dd>
         <dt>Map engine</dt>

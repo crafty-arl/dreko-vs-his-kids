@@ -92,7 +92,18 @@ export function card(im, flip = false, lean = 0) {
     g.scale(-1, 1)
   }
   g.drawImage(im, 0, 0)
-  return [c, c.width / c.height]
+  if (!lean) return [c, c.width / c.height]
+  // a lean leaves empty rows under the picture's lowest point: cut them off, so its feet stand on the card's bottom edge
+  const px = g.getImageData(0, 0, c.width, c.height).data
+  let last = c.height - 1
+  const empty = (y) => {
+    for (let x = 0, i = y * c.width * 4 + 3; x < c.width; x++, i += 4) if (px[i] > 127) return false
+    return true
+  }
+  while (last > 0 && empty(last)) last--
+  const cut = canvas(c.width, last + 1)
+  cut.getContext('2d').drawImage(c, 0, 0)
+  return [cut, cut.width / cut.height]
 }
 
 // A person or a thing as a square cut-out with its feet on the bottom edge.

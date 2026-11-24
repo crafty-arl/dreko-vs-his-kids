@@ -62,51 +62,66 @@ export function placeName(x, y) {
   return z ? PLACES[z].name : ''
 }
 
-// Solid furniture. `at` is its tile, `size` its drawn height in tiles, `front` how far its picture stands toward
-// the camera from the tile's middle (the pictures are drawn from their front corner). `more` lists any other
-// tiles a wide thing covers, and `shift` [x, y] slides its picture so it sits over all of them. A thing whose picture is not painted yet is drawn as a grey labelled box
-// (src/game/art.js LATER). `flip` mirrors a picture so its front faces into the room. The camera looks from the south-east, so the tall things stand against the north and
-// west walls of a room and nothing tall stands in front of a place a kid waits.
+// Solid furniture. `at` is the tile it blocks (`more` lists any other tiles a long thing blocks), `size` its drawn
+// height in tiles. `mid` is the middle of the floor the thing covers, and the game works out from the picture's
+// own width where its card has to stand for that (src/game/world.js): a thing against a wall has a `mid` half its
+// own depth from that wall, so its back touches the wall and its feet stand on the floor in front of it. With no
+// `mid` it stands on the middle of its tile. A thing with a part that hangs on the wall behind it (a mirror, a
+// high tank) has `stand` in place of `mid`: the point on the floor where the middle of its card stands, set so
+// the card's far end just touches the wall and the hanging part looks fixed to it.
+// The pictures are painted with their front toward the lower left, which is right for a thing on a north wall.
+// `flip` mirrors one so its front faces the other way, for a west wall. `lean` slides a picture down as it goes
+// right (up, if negative), for a thing that was painted too front-on: it turns the thing's long edge so it runs
+// along its wall like the floor does (src/game/art.js). A thing whose picture is not painted yet is drawn as a
+// grey labelled box (src/game/art.js LATER).
+// The camera looks from the south-east, so the tall things stand against the north and west walls of a room and
+// nothing tall stands in front of a place a kid waits.
 // Which things, and where, is a draft of Nov 21 that Carl said go on. Each thing belongs to a need of its room.
+// Nov 23, Carl: "take another pass at the alignment of our props". Every thing was measured against the floor's
+// own lines and set flush to its wall; the three kitchen things and the show shelf are a touch smaller so they
+// fit side by side, and the cubbies are a touch smaller so the five stacks fit along their wall.
+const CUBBY = { size: 1.7, long: 1.33, deep: 0.47 } // one stack of two cubbies: its drawn height, and the floor it covers
 export const PROPS = [
-  // Kitchen: breakfast, packed lunch
-  { id: 'fridge', at: [1, 1], img: 'fridge', size: 2.3, front: 0.3 }, // a wooden icebox
-  { id: 'stove', at: [2, 1], img: 'stove', size: 2.2, front: 0.3 }, // a cast iron range with its stovepipe
-  { id: 'counter', at: [3, 1], img: 'counter', size: 1.6, front: 0.3 }, // a cabinet with an enamel sink
-  { id: 'pantry', at: [1, 3], img: 'pantry', size: 2.3, front: 0.2, flip: true },
-  { id: 'table', at: [4, 3], img: 'table', size: 1.6, front: 0.33 },
+  // Kitchen: breakfast, packed lunch. The three things on the north wall stand side by side from the corner.
+  { id: 'fridge', at: [1, 1], img: 'fridge', size: 2.2, mid: [1.58, 1.33] }, // a wooden icebox
+  { id: 'stove', at: [2, 1], img: 'stove', size: 2.0, mid: [2.64, 1.48] }, // a cast iron range with its stovepipe
+  { id: 'counter', at: [3, 1], img: 'counter', size: 1.5, mid: [3.67, 1.32] }, // a cabinet with an enamel sink
+  { id: 'pantry', at: [1, 3], img: 'pantry', size: 2.3, mid: [1.2, 3.5], flip: true, lean: -0.3 },
+  { id: 'table', at: [4, 3], img: 'table', size: 1.6, mid: [4.5, 3.5] },
   // the two chairs sit on the far sides of the table, each facing it
-  { id: 'chair-a', at: [3, 3], img: 'chair', size: 1.35, front: 0.2, flip: true },
-  { id: 'chair-b', at: [4, 2], img: 'chair', size: 1.35, front: 0.2 },
+  { id: 'chair-a', at: [3, 3], img: 'chair', size: 1.35, mid: [3.55, 3.5], flip: true },
+  { id: 'chair-b', at: [4, 2], img: 'chair', size: 1.35, mid: [4.5, 2.55] },
   // Bathroom: teeth brushed, antenna braids
-  { id: 'vanity', at: [8, 1], img: 'vanity', size: 1.8, front: 0.2 },
-  { id: 'sink', at: [10, 1], img: 'sink', size: 2.2, front: 0.2 }, // a pedestal sink under a mirror
-  { id: 'toilet', at: [11, 1], img: 'toilet', size: 2.2, front: 0.2 }, // high tank and pull chain
-  { id: 'tub', at: [12, 1], more: [[13, 1]], img: 'tub', size: 1.72, front: 0.2, shift: [0.5, 0] },
-  { id: 'towels', at: [8, 4], img: 'towels', size: 1.6, front: 0.2, flip: true },
+  { id: 'vanity', at: [8, 1], img: 'vanity', size: 1.8, stand: [8.5, 1.48] }, // a dressing table, its mirror and its stool
+  { id: 'sink', at: [10, 1], img: 'sink', size: 2.2, stand: [10.5, 1.36] }, // a pedestal sink under a mirror
+  { id: 'toilet', at: [11, 1], img: 'toilet', size: 2.2, stand: [11.64, 1.32] }, // high tank and pull chain
+  { id: 'tub', at: [12, 1], more: [[13, 1]], img: 'tub', size: 1.72, mid: [13, 1.51] },
+  { id: 'towels', at: [8, 4], img: 'towels', size: 1.6, mid: [8.23, 4.5], flip: true },
   // Cubby room: the kids sleep in cubbies, not beds. Five stacks of two along the wall is ten cubbies.
-  ...[7, 8, 9, 10, 11].map((y, i) => ({ id: 'cubby-' + i, at: [1, y], img: 'cubbies', size: 2.0, front: 0.2, flip: true })),
-  { id: 'socks', at: [4, 7], img: 'sock-basket', size: 0.9, front: 0.2 },
-  { id: 'desk', at: [5, 7], img: 'desk', size: 1.65, front: 0.2 }, // a school desk with an inkwell and an oil lamp
-  { id: 'coats', at: [6, 7], img: 'coat-rack', size: 1.9, front: 0.2 },
+  ...[7, 8, 9, 10, 11].map((y, i) => ({ id: 'cubby-' + i, at: [1, y], img: 'cubbies', size: CUBBY.size, mid: [1 + CUBBY.deep / 2, 7 + CUBBY.long / 2 + (i * (5 - CUBBY.long)) / 4], flip: true, lean: -0.3 })),
+  { id: 'socks', at: [4, 7], img: 'sock-basket', size: 0.9, mid: [4.5, 7.38] },
+  { id: 'desk', at: [5, 7], img: 'desk', size: 1.65, mid: [5.5, 7.44] }, // a school desk with an inkwell and an oil lamp
+  { id: 'coats', at: [6, 7], img: 'coat-rack', size: 1.9, mid: [6.39, 7.24] },
   // Front hall: permission slip, backpack, show-and-tell, shoes
   // the shoe rack is two tiles long, so it stands along the west wall by the front door
-  { id: 'shoes', at: [8, 10], more: [[8, 11]], img: 'shoe-rack', size: 1.7, front: 0.2, shift: [0, 0.5] }, // painted for the west wall, so not flipped
-  { id: 'hooks', at: [8, 7], img: 'backpack-hooks', size: 1.95, front: 0.2 }, // satchels and book straps; painted for the west wall
-  { id: 'hall-table', at: [13, 7], img: 'hall-table', size: 1.15, front: 0.2 },
-  { id: 'shelf', at: [12, 7], img: 'show-shelf', size: 2.2, front: 0.2 },
+  { id: 'shoes', at: [8, 10], more: [[8, 11]], img: 'shoe-rack', size: 1.7, mid: [8.27, 10.97], lean: -0.24 }, // painted for the west wall, so not flipped
+  { id: 'hooks', at: [8, 7], img: 'backpack-hooks', size: 1.95, mid: [8.21, 7.75] }, // satchels and book straps; painted for the west wall
+  { id: 'hall-table', at: [13, 7], img: 'hall-table', size: 1.15, mid: [13.5, 7.34] },
+  { id: 'shelf', at: [12, 7], img: 'show-shelf', size: 1.9, mid: [12.45, 7.17], flip: true, lean: 0.24 }, // painted for a west wall: flipped and turned for this north wall
   // Outside
-  { id: 'stop-sign', at: [1, 13], img: 'bus-stop-sign', size: 2.6, front: 0.1 },
-  { id: 'mailbox', at: [13, 13], img: 'mailbox', size: 1.5, front: 0.1 },
+  { id: 'stop-sign', at: [1, 13], img: 'bus-stop-sign', size: 2.6 },
+  { id: 'mailbox', at: [13, 13], img: 'mailbox', size: 1.5 },
 ]
 
 // Every tile furniture stands on.
 export const SOLID = PROPS.flatMap((p) => [p.at, ...(p.more ?? [])])
 
-// Small things that sit on furniture: `up` is how high off the floor, in floors. They stand just in front of the furniture's card.
+// Small things that sit on furniture: `on` is that furniture, `at` a point on the floor, `up` how high off the
+// floor, in floors. Each stands just in front of its furniture's card (the table's card stands at 5.05, 4.05, the
+// counter's at 4.14, 1.79).
 export const SMALL = [
-  { id: 'bowl', at: [4.9, 3.9], img: 'cereal-bowl', size: 0.5, up: 1.45 },
-  { id: 'lunch-boxes', at: [3.95, 1.95], img: 'lunch-boxes', size: 0.55, up: 1.3 },
+  { id: 'bowl', on: 'table', at: [5.12, 4.12], img: 'cereal-bowl', size: 0.5, up: 1.45 },
+  { id: 'lunch-boxes', on: 'counter', at: [4.29, 1.94], img: 'lunch-boxes', size: 0.52, up: 1.22 },
 ]
 
 // Where a kid can stand and wait in each room, as tile middles. Six per room, picked by hand: never on furniture,
