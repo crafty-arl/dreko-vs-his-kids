@@ -334,12 +334,21 @@ export default function Game() {
     setSoundOn(!sound.muted)
     setGroups({ music: !sound.muted && sound.on.music, sounds: !sound.muted && sound.on.sounds })
     setVolume(sound.volume)
-    sound.play('music', { loop: true }) // the menu music runs through the whole game, as Carl asked on Nov 21
     return () => {
       sound.end()
       soundRef.current = null
     }
   }, [])
+
+  // The music: "Menu 2" loops on the title screen and its pages (Carl, Nov 23: "Put the new menu 2 into the menu
+  // as the menu music"), and the first tune loops through the mornings. Each starts from the top when its turn comes.
+  const onTitle = !!title
+  useEffect(() => {
+    const sound = soundRef.current
+    if (!sound) return
+    sound.stop(onTitle ? 'music' : 'menu', 600)
+    sound.play(onTitle ? 'menu' : 'music', { loop: true })
+  }, [onTitle])
 
   // What plays when, on top of the music: the tick-tock for the last seconds before the bus (it waits while
   // the need list is open, like the clock), the bus-left music while that card is up, and the win music on

@@ -3,16 +3,17 @@
 // until the first tap or key. It runs on Web Audio, so volume and several tracks at once work on a phone too.
 
 const FILES = {
-  music: 'menu.mp3', // loops through the whole game
+  menu: 'menu-2.mp3', // "Menu 2": loops on the title screen and its pages (Carl, Nov 23)
+  music: 'menu.mp3', // loops through the mornings
   tick: 'mixkit-tick-tock-clock-timer-1045.wav', // the last seconds before the bus
   lose: 'Bus-lose.mp3', // the bus left
   win: 'Bus-win.mp3', // all ten made the bus
   // not used yet: 'Dad-died.mp3' has no moment in the game yet
 }
-const VOLUME = { music: 0.5, tick: 0.85, lose: 0.9, win: 0.9 }
+const VOLUME = { menu: 0.5, music: 0.5, tick: 0.85, lose: 0.9, win: 0.9 }
 const KEY = 'dreko-sound'
 // Settings: the music (the tune that loops) and the sounds (tick-tock, bus left, all aboard) each have a switch
-const GROUP = { music: 'music', tick: 'sounds', lose: 'sounds', win: 'sounds' }
+const GROUP = { menu: 'music', music: 'music', tick: 'sounds', lose: 'sounds', win: 'sounds' }
 // Settings: how loud the music and the sounds are, each in three steps (Carl, Nov 23: "Add more settings")
 export const VOLUME_STEPS = [{ v: 0.4, name: 'Low' }, { v: 0.7, name: 'Mid' }, { v: 1, name: 'High' }]
 const WAKE = ['pointerdown', 'pointerup', 'touchend', 'click', 'keydown']
