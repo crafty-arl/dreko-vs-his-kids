@@ -1,6 +1,6 @@
 // The settings the title screen's Settings page and the pause card share (Carl, Nov 23: "Add more settings").
 // prefs: { sound: { music, sounds }, onSound(group), volume: { music, sounds }, onVolume(group), canFull, full,
-// onFull(), tools, onTools() }. Everything here is remembered on the device, except full screen.
+// onFull() }. Everything here is remembered on the device, except full screen.
 import { VOLUME_STEPS } from './sound.js'
 
 const volumeName = (v) => (VOLUME_STEPS.find((s) => s.v === v) ?? VOLUME_STEPS[VOLUME_STEPS.length - 1]).name
@@ -24,10 +24,6 @@ export function SettingRows({ prefs }) {
           <button type="button" className="tool" aria-pressed={prefs.full} onClick={prefs.onFull}>{prefs.full ? 'On' : 'Off'}</button>
         </div>
       )}
-      <div className="set-row">
-        <span>Test buttons <em>Log and Walk test</em></span>
-        <button type="button" className="tool" aria-pressed={prefs.tools} onClick={prefs.onTools}>{prefs.tools ? 'On' : 'Off'}</button>
-      </div>
     </>
   )
 }

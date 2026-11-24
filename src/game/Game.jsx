@@ -10,6 +10,12 @@ import Title from './Title.jsx'
 import { Coach, coach } from './Tutorial.jsx'
 import { startGame } from './world.js'
 
+// A test build (`npm run dev`, or `npm run build:test`) keeps the hooks the test scripts use: window.__dreko,
+// the rules log, the walk test and the ?notitle, ?log, ?walktest and ?tools address flags. The game that
+// ships (`npm run build`) has none of them.
+const TEST = import.meta.env.DEV || import.meta.env.MODE === 'test'
+const ASKED = TEST ? new URLSearchParams(window.location.search) : null
+
 // The game screen: one canvas for the house, and the overlay on top.
 export default function Game() {
   const stageRef = useRef(null)
@@ -20,17 +26,17 @@ export default function Game() {
   const soundRef = useRef(null)
   const [soundOn, setSoundOn] = useState(true)
   const [groups, setGroups] = useState({ music: true, sounds: true }) // Settings: the music and the sounds, each on or off
-  // More settings (Carl, Nov 23): how loud each is, full screen, and whether the Log and Walk test buttons show
+  // More settings (Carl, Nov 23): how loud each is, and full screen
   const [volume, setVolume] = useState({ music: 1, sounds: 1 })
   const [full, setFull] = useState(false)
-  const [tools, setTools] = useState(() => {
-    try { return localStorage.getItem('dreko-test-buttons') !== 'off' } catch { return true }
-  })
-  // The rules log: a line for every rule that fires, newest first. Open the page with ?log to start with it showing.
+  // Test build only: the Log and Walk test buttons show when the page is opened with ?tools
+  const tools = (TEST && ASKED.has('tools'))
+  // The rules log (test build only): a line for every rule that fires, newest first. ?log starts with it showing.
   const [log, setLog] = useState([])
-  const [showLog, setShowLog] = useState(() => new URLSearchParams(window.location.search).has('log'))
+  const [showLog, setShowLog] = useState(() => (TEST && ASKED.has('log')))
   const logId = useRef(0)
   const note = useCallback((event) => {
+    if (!TEST) return
     const e = typeof event === 'string' ? { text: event, ...(gameRef.current?.state().clock ?? { day: 0, loop: 1, left: CLOCK.firstLoop }) } : event
     const seconds = Math.ceil(e.left)
     const stamp = `${e.week ? `W${e.week + 1} ` : ''}${WEEK.days[e.day].slice(0, 3)}${e.loop > 1 ? ` try ${e.loop}` : ''} ${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`
@@ -58,8 +64,8 @@ export default function Game() {
   const [listOpen, setListOpen] = useState(false)
   const [clock, setClock] = useState({ phase: 'ready', week: 0, day: 0, loop: 1, total: CLOCK.firstLoop, left: CLOCK.firstLoop, boarded: 0, earned: 0 })
   // The title screen is up when the page opens: 'home', or its 'settings' or 'credits' page, or null once the
-  // game is on. Open the page with ?notitle to go straight to the house.
-  const [title, setTitle] = useState(() => (new URLSearchParams(window.location.search).has('notitle') ? null : 'home'))
+  // game is on. In a test build, ?notitle goes straight to the house.
+  const [title, setTitle] = useState(() => ((TEST && ASKED.has('notitle')) ? null : 'home'))
   // How to play: has the player opened and closed the need list yet (one of its steps)
   const [listSeen, setListSeen] = useState(false)
   // Your three best tries, kept on this device. bestAt is where the game that just ended landed (-1 = not on the board).
@@ -106,8 +112,8 @@ export default function Game() {
   const [status, setStatus] = useState('loading')
   const [showMap, setShowMap] = useState(false)
   const [walked, setWalked] = useState(false)
-  // Walk test: every kid paces on the spot so the shared walk can be checked. Open the page with ?walktest to start in it.
-  const [walkTest, setWalkTest] = useState(() => new URLSearchParams(window.location.search).has('walktest'))
+  // Walk test: every kid paces on the spot so the shared walk can be checked. Test build only; ?walktest starts in it.
+  const [walkTest, setWalkTest] = useState(() => (TEST && ASKED.has('walktest')))
 
   // Start on the title screen: the opening scene plays, then the first morning
   const startFromTitle = useCallback(() => {
@@ -197,7 +203,7 @@ export default function Game() {
         if (cancelled) return g.stop()
         game = g
         gameRef.current = g
-        window.__dreko = g // lets a test, or you in the console, ask where Dreko is
+        if (TEST) window.__dreko = g // lets a test ask where Dreko is and move the game along
         fit()
         watch.observe(stage)
         setStatus('ready')
@@ -279,12 +285,6 @@ export default function Game() {
     document.addEventListener('fullscreenchange', onFull)
     return () => document.removeEventListener('fullscreenchange', onFull)
   }, [])
-  // with the test buttons off, the log and the walk test go away with them
-  useEffect(() => {
-    if (tools) return
-    setShowLog(false)
-    setWalkTest(false)
-  }, [tools])
 
   // the clock waits while the need list is open
   const listWas = useRef(false)
@@ -330,7 +330,7 @@ export default function Game() {
   useEffect(() => {
     const sound = createSound()
     soundRef.current = sound
-    window.__drekoSound = sound // for tests
+    if (TEST) window.__drekoSound = sound
     setSoundOn(!sound.muted)
     setGroups({ music: !sound.muted && sound.on.music, sounds: !sound.muted && sound.on.sounds })
     setVolume(sound.volume)
@@ -469,13 +469,7 @@ export default function Game() {
     if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {})
     else document.documentElement.requestFullscreen?.().catch(() => {})
   }
-  const flipTools = () => {
-    setTools((v) => {
-      try { localStorage.setItem('dreko-test-buttons', v ? 'off' : 'on') } catch { /* nothing to save to */ }
-      return !v
-    })
-  }
-  const prefs = { sound: groups, onSound: flipSound, volume, onVolume: stepVolume, canFull, full, onFull: flipFull, tools, onTools: flipTools }
+  const prefs = { sound: groups, onSound: flipSound, volume, onVolume: stepVolume, canFull, full, onFull: flipFull }
 
   // How to play: what the coach says right now (null outside the practice morning, and once its last card is up)
   const line = clock.tutorial && !title && status === 'ready' && !(clock.phase === 'dayWon' && !clock.scene) ? coach({ clock, near, needs, ready, listSeen }) : null
@@ -535,7 +529,7 @@ export default function Game() {
             >
               Sound {soundOn ? 'on' : 'off'}
             </button>
-            {tools && (
+            {TEST && tools && (
               <button type="button" className="tool" aria-pressed={showLog} onClick={() => setShowLog((v) => !v)}>
                 Log
               </button>
@@ -547,7 +541,7 @@ export default function Game() {
           <button type="button" className="tool" aria-pressed={showMap} onClick={() => setShowMap((v) => !v)}>
             Map
           </button>
-          {tools && (
+          {TEST && tools && (
             <button type="button" className="tool" aria-pressed={walkTest} onClick={() => setWalkTest((v) => !v)}>
               Walk test
             </button>
@@ -559,7 +553,7 @@ export default function Game() {
           <Task kid={KIDS.find((k) => k.name === task)} needId={needs[task]?.[0]} onDone={finishTask} onClose={closeTask} onEvent={note} worry={clock.worry ?? 0} onMiss={() => gameRef.current?.miss()} tip={clock.tutorial ? 'Practice: the bus clock is stopped. Take your time.' : ''} />
         </div>
       )}
-      {showLog && (
+      {TEST && showLog && (
         <section className={`rules-log ${task ? 'rules-log-small' : ''}`} aria-label="Rules log">
           <h2>Rules log <small>newest first</small></h2>
           <ol>

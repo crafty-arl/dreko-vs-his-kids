@@ -8,14 +8,13 @@ const IDS = Object.keys(MARKET.items)
 const slots = (pockets) => Array.from({ length: MARKET.pockets }, (_, i) => pockets[i] ?? null)
 
 // The market card. It comes up after the "day done" card, in place of it.
-// The spot for the character who runs it is empty on purpose: that character is Carl's to make.
+// The character who runs it is Carl's to make. Until that picture exists the card has no spot for one.
 export default function Market({ market, nextDay, onBuy, onPutBack, onGo }) {
   const full = market.pockets.length >= MARKET.pockets
   return (
     <div className="list market" role="dialog" aria-label="The market">
       <div className="panel panel-bus panel-market">
         <div className="market-who">
-          <div className="market-ghost" aria-hidden="true">Your character goes here</div>
           <div>
             <h2>The market</h2>
             <p className="market-points" aria-live="polite">{market.points} {market.points === 1 ? 'point' : 'points'} to spend</p>
