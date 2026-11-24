@@ -191,6 +191,7 @@ export async function startGame(canvas, hooks = {}) {
   }
   say(dayLine())
   let busy = false // true while a mini task is open: Dreko stands still, the clock keeps running
+  let frozen = false // true while the game is paused: the whole morning stands still
   let hold = false // true while the title screen is up: Dreko stands still, so the clock does not start
   let held = null // the kid that task is for: they stand still too
   let tutorial = false // true in How to play: a practice morning, and the bus clock does not run
@@ -921,7 +922,9 @@ export async function startGame(canvas, hooks = {}) {
     if (stopped) return
     const dt = Math.min(50, now - (last || now))
     last = now
-    step(dt)
+    // paused: nothing in the house moves and the clock stands still; only the controller's buttons are read
+    if (frozen) for (const tap of input.taps()) hooks.onButton?.(tap)
+    else step(dt)
     draw(now)
     requestAnimationFrame(frame)
   }
@@ -1049,6 +1052,13 @@ export async function startGame(canvas, hooks = {}) {
     setWalkTest(on) { walkTest = !!on },
     setPaused(on) { clock.paused = !!on },
     setHold(on) { hold = !!on },
+    // the pause button: everything stands still until it is let go again
+    setFrozen(on) {
+      if (frozen === !!on) return
+      frozen = !!on
+      dreko.path = null
+      say(frozen ? 'The game is paused. Nothing moves and the clock waits.' : 'The game goes on.')
+    },
     // a mini task opens for a kid (their name) or closes (null): Dreko and that kid stand still
     setBusy(name) {
       busy = !!name
@@ -1132,7 +1142,7 @@ export async function startGame(canvas, hooks = {}) {
     // for tests: look at any place from any distance (the angle never changes); no argument gives the game's camera back
     spy: (at, dist) => (spy = at ? { at, dist } : null),
     // for tests and for the next systems (needs, clock): where things are right now
-    state: () => ({ worry: worry(), drops: drops.length, bus: { x: bus.x, scene: bus.scene }, mom: { at: mom.at.slice(), look: mom.look }, dreko: dreko.at.slice(), place, moving: dreko.moving, known: Object.keys(known), told: { ...known }, rooms: Object.fromEntries(kids.map((k) => [k.kid.name, needs[k.kid.name].length ? ROOM_OF[needs[k.kid.name][0]] : null])), spots: Object.fromEntries(kids.map((k) => [k.kid.name, k.spot.slice()])), plan: JSON.parse(JSON.stringify(spots)), deal: copy(deal), solid: kids.filter((k) => k.state === 'home' && k.solid).map((k) => k.kid.name), at: Object.fromEntries(kids.map((k) => [k.kid.name, k.at.slice()])), clock: { tutorial, phase: clock.phase, week: clock.week, day: clock.day, loop: clock.loop, level: { ...level }, left: clock.left, total: clock.total, boarded: clock.boarded, earned: clock.earned }, near, market: { ...market, pockets: market.pockets.slice() }, needs: copy(needs), kids: Object.fromEntries(kids.map((k) => [k.kid.name, k.state])) }),
+    state: () => ({ worry: worry(), drops: drops.length, bus: { x: bus.x, scene: bus.scene }, mom: { at: mom.at.slice(), look: mom.look }, dreko: dreko.at.slice(), place, moving: dreko.moving, known: Object.keys(known), told: { ...known }, rooms: Object.fromEntries(kids.map((k) => [k.kid.name, needs[k.kid.name].length ? ROOM_OF[needs[k.kid.name][0]] : null])), spots: Object.fromEntries(kids.map((k) => [k.kid.name, k.spot.slice()])), plan: JSON.parse(JSON.stringify(spots)), deal: copy(deal), solid: kids.filter((k) => k.state === 'home' && k.solid).map((k) => k.kid.name), at: Object.fromEntries(kids.map((k) => [k.kid.name, k.at.slice()])), frozen, clock: { tutorial, phase: clock.phase, week: clock.week, day: clock.day, loop: clock.loop, level: { ...level }, left: clock.left, total: clock.total, boarded: clock.boarded, earned: clock.earned }, near, market: { ...market, pockets: market.pockets.slice() }, needs: copy(needs), kids: Object.fromEntries(kids.map((k) => [k.kid.name, k.state])) }),
     stop() {
       stopped = true
       input.stop()

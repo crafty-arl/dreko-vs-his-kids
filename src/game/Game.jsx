@@ -42,6 +42,8 @@ export default function Game() {
   const [shop, setShop] = useState(false)
   const [lit, setLit] = useState(0)
   const [itemSay, setItemSay] = useState(null)
+  // The pause button (Carl's card, Nov 23): the whole morning stands still until Continue, or Back to the title
+  const [paused, setPausedNow] = useState(false)
   const sayId = useRef(0)
   const [known, setKnown] = useState({})
   const [needs, setNeeds] = useState({}) // what each kid still needs today: { kidName: [needId, ...] }, dealt by the game
@@ -60,7 +62,7 @@ export default function Game() {
   const [bestAt, setBestAt] = useState(-1)
   // the newest values, for the key and button handlers that are set up once
   const now = useRef({})
-  now.current = { near, task, listOpen, needs, title, shop, lit, phase: clock.phase, tutorial: clock.tutorial, pockets: market.pockets.length, card: (clock.phase === 'left' || clock.phase === 'dayWon' || clock.phase === 'over') && !clock.scene }
+  now.current = { near, task, listOpen, needs, title, shop, lit, paused, phase: clock.phase, tutorial: clock.tutorial, pockets: market.pockets.length, card: (clock.phase === 'left' || clock.phase === 'dayWon' || clock.phase === 'over') && !clock.scene }
   const openTask = useCallback(() => {
     const s = now.current
     if (!s.near || s.task || s.listOpen) return
@@ -84,6 +86,14 @@ export default function Game() {
     setShop(false)
     gameRef.current?.next()
   }, [])
+  // Pause only while a morning is being played: not on the title, on a card or inside a mini task
+  const pause = useCallback(() => {
+    const s = now.current
+    if (s.title || s.card || s.task || (s.phase !== 'run' && s.phase !== 'ready')) return
+    setListOpen(false)
+    setPausedNow(true)
+  }, [])
+  const resume = useCallback(() => setPausedNow(false), [])
   const spendItem = useCallback((slot) => gameRef.current?.useItem(slot), [])
   const [place, setPlace] = useState('')
   const [status, setStatus] = useState('loading')
@@ -102,6 +112,7 @@ export default function Game() {
   }, [])
   // leave the practice morning (or its last card) for the title screen
   const toTitle = useCallback(() => {
+    setPausedNow(false)
     gameRef.current?.playAgain()
     setListOpen(false)
     setTask(null)
@@ -109,14 +120,17 @@ export default function Game() {
   }, [])
   // The title screen and its pages with a controller: the D-pad or stick moves between the buttons, A presses
   // the one that is lit, B goes back, Y is How to play and Start starts.
-  // The market works the same way; there A with nothing lit is its "Go to" button.
+  // The market works the same way; there A with nothing lit is its "Go to" button. So does the pause card:
+  // there A with nothing lit is Continue, and B or Start goes on with the game.
   const menuButton = useCallback((button) => {
     const view = now.current.title
-    const buttons = [...document.querySelectorAll(view ? '.title .panel button:not(:disabled)' : '.market .panel button:not(:disabled)')]
+    const held = !view && now.current.paused
+    const buttons = [...document.querySelectorAll(view ? '.title .panel button:not(:disabled)' : held ? '.pause .panel button:not(:disabled)' : '.market .panel button:not(:disabled)')]
     const at = buttons.indexOf(document.activeElement)
     if (button === 'down' || button === 'right') buttons[(at + 1) % buttons.length]?.focus()
     else if (button === 'up' || button === 'left') buttons[(Math.max(at, 0) - 1 + buttons.length) % buttons.length]?.focus()
-    else if (button === 'a') (at >= 0 ? buttons[at] : view === 'home' ? buttons[0] : !view ? buttons[buttons.length - 1] : null)?.click()
+    else if (button === 'a') (at >= 0 ? buttons[at] : view === 'home' || held ? buttons[0] : !view ? buttons[buttons.length - 1] : null)?.click()
+    else if (held && (button === 'b' || button === 'start')) setPausedNow(false)
     else if (button === 'b' && view && view !== 'home') setTitle('home')
     else if (button === 'y' && view === 'home') startTutorial()
     else if (button === 'start' && view === 'home') setTitle(null)
@@ -143,7 +157,8 @@ export default function Game() {
       })
     }
     const onButton = (button) => {
-      if (now.current.title || now.current.shop) return menuButton(button)
+      if (now.current.title || now.current.shop || now.current.paused) return menuButton(button)
+      if (button === 'start') return pause()
       if (button === 'a') {
         if (now.current.card) continueCard() // Continue on the card between tries and days
         else openTask()
@@ -228,6 +243,20 @@ export default function Game() {
     return () => clearTimeout(t)
   }, [itemSay])
 
+  // Paused: the house stands still. The pause ends by itself if the morning does, and it starts by itself when
+  // the page is hidden (a phone that locks, another tab), so the bus cannot leave while nobody is looking.
+  useEffect(() => {
+    gameRef.current?.setFrozen(paused)
+  }, [paused, status])
+  useEffect(() => {
+    if (paused && (title || (clock.phase !== 'run' && clock.phase !== 'ready'))) setPausedNow(false)
+  }, [paused, title, clock.phase])
+  useEffect(() => {
+    const hidden = () => { if (document.hidden) pause() }
+    document.addEventListener('visibilitychange', hidden)
+    return () => document.removeEventListener('visibilitychange', hidden)
+  }, [pause])
+
   // the clock waits while the need list is open
   const listWas = useRef(false)
   useEffect(() => {
@@ -285,7 +314,7 @@ export default function Game() {
   // What plays when, on top of the music: the tick-tock for the last seconds before the bus (it waits while
   // the need list is open, like the clock), the bus-left music while that card is up, and the win music on
   // the win. The menu music fades out under those two, as Carl asked on Nov 21, and comes back after.
-  const hurry = clock.phase === 'run' && clock.left <= CLOCK.hurry && !listOpen
+  const hurry = clock.phase === 'run' && clock.left <= CLOCK.hurry && !listOpen && !paused
   const hurryWas = useRef(false)
   useEffect(() => {
     const sound = soundRef.current
@@ -330,6 +359,11 @@ export default function Game() {
         }
         return
       }
+      if (now.current.paused) {
+        // the pause card: P or Escape goes on with the game; its buttons take Enter and Space themselves
+        if ((key === 'p' || key === 'escape') && !e.repeat) resume()
+        return
+      }
       if (now.current.shop) return // the market: its buttons take Enter and Space themselves
       if (now.current.card) {
         // Continue on the card between tries and days
@@ -343,6 +377,8 @@ export default function Game() {
       if (/^[1-9]$/.test(key) && !e.repeat && !now.current.listOpen) spendItem(Number(key) - 1)
       if (/^(arrow|[wasd]$)/i.test(e.key)) setWalked(true)
       if (key === 'y') setListOpen((v) => !v)
+      // P pauses; Escape closes the need list if it is open, and pauses if it is not
+      if (!e.repeat && (key === 'p' || (key === 'escape' && !now.current.listOpen))) return pause()
       if (key === 'escape' || key === 'b') setListOpen(false)
       if ((key === 'e' || key === ' ' || key === 'enter') && !e.repeat && now.current.near && !now.current.listOpen) {
         e.preventDefault()
@@ -389,6 +425,9 @@ export default function Game() {
         onHelp={openTask}
         onPlayAgain={() => gameRef.current?.playAgain()}
         onContinue={continueCard}
+        paused={paused}
+        onPause={pause}
+        onResume={resume}
         market={market}
         shop={shop}
         lit={lit}
@@ -458,10 +497,10 @@ export default function Game() {
           </ol>
         </section>
       )}
-      <canvas ref={mapRef} className="minimap" hidden={!showMap || !!title || listOpen || !!task || now.current.card} aria-label="Tile map of the house" />
+      <canvas ref={mapRef} className="minimap" hidden={!showMap || !!title || listOpen || !!task || paused || now.current.card} aria-label="Tile map of the house" />
       {status === 'loading' && <p className="note">Waking the house up</p>}
       {status === 'error' && <p className="note">The house did not load. Reload the page to try again.</p>}
-      {line && !task && !listOpen && <div className={overlayClass}><Coach line={line} onLeave={toTitle} /></div>}
+      {line && !task && !listOpen && !paused && <div className={overlayClass}><Coach line={line} onLeave={toTitle} /></div>}
       {status === 'ready' && title && (
         <Title
           view={title}

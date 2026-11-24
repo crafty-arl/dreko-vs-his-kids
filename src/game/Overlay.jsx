@@ -21,7 +21,7 @@ const clockText = (seconds) => `${Math.floor(seconds / 60)}:${String(Math.ceil(s
 // bus, at the stop remembering one more need, on the way back in, or waiting for the bus.
 // helping: the kid Dreko can help right now, if any.
 // bubbleRefs: one ref per kid, in KIDS order; the game moves them every frame.
-export default function Overlay({ place, known, needs, ready, helping, clock, worry, calm, listOpen, onToggleList, onHelp, onPlayAgain, onContinue, best = [], bestAt = -1, pointAt, onTitle, counted = 0, onPick, market, shop, lit = 0, itemSay, onUse, onBuy, onPutBack, bubbleRefs, settings, children }) {
+export default function Overlay({ place, known, needs, ready, helping, clock, worry, calm, listOpen, onToggleList, onHelp, onPlayAgain, onContinue, best = [], bestAt = -1, pointAt, onTitle, counted = 0, onPick, market, shop, lit = 0, itemSay, onUse, onBuy, onPutBack, paused, onPause, onResume, bubbleRefs, settings, children }) {
   const over = clock.phase === 'left' || clock.phase === 'over' || clock.phase === 'dayWon'
   const left = (kid) => needs[kid.name] ?? []
   const needOf = (kid) => left(kid)[0]
@@ -104,7 +104,7 @@ export default function Overlay({ place, known, needs, ready, helping, clock, wo
       </header>
 
       {/* the things from the market that Dreko carries: tap one to use it */}
-      {market && !over && !listOpen && !clock.tutorial && <Pockets market={market} lit={lit} say={itemSay} onUse={onUse} />}
+      {market && !over && !listOpen && !paused && !clock.tutorial && <Pockets market={market} lit={lit} say={itemSay} onUse={onUse} />}
 
       <footer className="hints">
         <div className="hint"><span className="key key-stick"><Icon name="stick" /></span>Walk</div>
@@ -113,10 +113,31 @@ export default function Overlay({ place, known, needs, ready, helping, clock, wo
             <span className="key key-a">A</span>Help {helping.name}
           </button>
         )}
-        <button type="button" className="hint hint-button" aria-expanded={listOpen} onClick={onToggleList}>
-          <span className="key key-y">Y</span>Needs
-        </button>
+        <span className="hint-pair">
+          {!over && (
+            <button type="button" className="hint hint-button hint-pause" aria-label="Pause" title="Pause" onClick={onPause}>
+              <span className="pause-bars" aria-hidden="true" />
+            </button>
+          )}
+          <button type="button" className="hint hint-button" aria-expanded={listOpen} onClick={onToggleList}>
+            <span className="key key-y">Y</span>Needs
+          </button>
+        </span>
       </footer>
+
+      {/* paused (Carl's card, Nov 23): go on with the game, or back to the title screen. The words are a stand-in. */}
+      {paused && !over && (
+        <div className="list pause" role="dialog" aria-label="Paused">
+          <div className="panel panel-bus">
+            <h2>Paused</h2>
+            <p>{clock.tutorial ? 'How to play · practice' : <>{week > 0 ? `Week ${week + 1} · ` : ''}{day} · try {clock.loop} of {WEEK.tries} · {onBus} of {KIDS.length} ready</>}</p>
+            <p>The clock waits and nobody moves.</p>
+            <button type="button" className="close again" onClick={onResume} autoFocus><span className="key key-a">A</span>Continue</button>
+            <button type="button" className="close task-close" onClick={onTitle}>Back to the title</button>
+            <p className="pause-tip">{clock.tutorial ? 'Back to the title leaves the practice morning.' : 'Back to the title ends this game. It starts again on the first Monday.'}</p>
+          </div>
+        </div>
+      )}
 
       {clock.phase === 'left' && !clock.scene && (
         <div className="list" role="status">

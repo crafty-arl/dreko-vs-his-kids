@@ -1145,3 +1145,10 @@ body,
   .panel-bus p.market-tip { flex: 1 1 200px; margin: 0; }
   .panel-market .close.again { margin-top: 8px; }
 }
+
+/* The pause button (Carl's card, Nov 23) sits beside Needs; its card has Continue and Back to the title */
+.hint-pair { display: flex; align-items: center; gap: 8px; }
+.hint-pause { width: 48px; justify-content: center; padding: 5px; }
+.pause-bars { width: 16px; height: 18px; border-left: 6px solid var(--ink); border-right: 6px solid var(--ink); box-sizing: border-box; }
+.pause .task-close { display: block; margin: 8px auto 0; }
+.panel-bus p.pause-tip { margin-top: 10px; font-size: 12px; opacity: 0.75; }
