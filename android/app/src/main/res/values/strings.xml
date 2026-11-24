@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Dreko vs His Kids</string>
+    <!-- The page the app opens. It is the preview link for now; change it when the game has its final address. -->
+    <string name="game_url" translatable="false">https://claude-house-map-first-playa.dreko-vs-his-kids.pages.dev/</string>
+    <string name="asset_statements" translatable="false">[{ \"relation\": [\"delegate_permission/common.handle_all_urls\"], \"target\": { \"namespace\": \"web\", \"site\": \"https://claude-house-map-first-playa.dreko-vs-his-kids.pages.dev\" } }]</string>
+</resources>
