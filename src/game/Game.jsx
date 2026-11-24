@@ -51,7 +51,6 @@ export default function Game() {
   // The pause button (Carl's card, Nov 23): the whole morning stands still until Continue, or Back to the title
   const [paused, setPausedNow] = useState(false)
   const sayId = useRef(0)
-  const [known, setKnown] = useState({})
   const [needs, setNeeds] = useState({}) // what each kid still needs today: { kidName: [needId, ...] }, dealt by the game
   const [ready, setReady] = useState({}) // kids whose need is met: 'walking' to the bus stop, or at the 'stop'
   const [near, setNear] = useState(null) // the kid Dreko is standing next to and can help
@@ -67,8 +66,10 @@ export default function Game() {
   const [best, setBest] = useState(readBest)
   const [bestAt, setBestAt] = useState(-1)
   // the newest values, for the key and button handlers that are set up once
+  // the opening scene while it plays (world.js): { step, n, line }
+  const [intro, setIntro] = useState(null)
   const now = useRef({})
-  now.current = { near, task, listOpen, needs, title, shop, lit, paused, phase: clock.phase, tutorial: clock.tutorial, pockets: market.pockets.length, card: (clock.phase === 'left' || clock.phase === 'dayWon' || clock.phase === 'over') && !clock.scene }
+  now.current = { near, task, listOpen, needs, title, shop, lit, paused, intro: !!intro, phase: clock.phase, tutorial: clock.tutorial, pockets: market.pockets.length, card: (clock.phase === 'left' || clock.phase === 'dayWon' || clock.phase === 'over') && !clock.scene }
   const openTask = useCallback(() => {
     const s = now.current
     if (!s.near || s.task || s.listOpen) return
@@ -108,6 +109,11 @@ export default function Game() {
   // Walk test: every kid paces on the spot so the shared walk can be checked. Open the page with ?walktest to start in it.
   const [walkTest, setWalkTest] = useState(() => new URLSearchParams(window.location.search).has('walktest'))
 
+  // Start on the title screen: the opening scene plays, then the first morning
+  const startFromTitle = useCallback(() => {
+    gameRef.current?.startIntro()
+    setTitle(null)
+  }, [])
   // How to play on the title screen: the practice morning starts, and the coach talks the player through it
   const startTutorial = useCallback(() => {
     gameRef.current?.startTutorial()
@@ -139,7 +145,7 @@ export default function Game() {
     else if (held && (button === 'b' || button === 'start')) setPausedNow(false)
     else if (button === 'b' && view && view !== 'home') setTitle('home')
     else if (button === 'y' && view === 'home') startTutorial()
-    else if (button === 'start' && view === 'home') setTitle(null)
+    else if (button === 'start' && view === 'home') startFromTitle()
   }, [startTutorial])
 
   useEffect(() => {
@@ -164,6 +170,11 @@ export default function Game() {
     }
     const onButton = (button) => {
       if (now.current.title || now.current.shop || now.current.paused) return menuButton(button)
+      if (now.current.intro) {
+        // the opening scene: A, B or Start skips it
+        if (button === 'a' || button === 'b' || button === 'start') gameRef.current?.skipIntro()
+        return
+      }
       if (button === 'start') return pause()
       if (button === 'a') {
         if (now.current.card) continueCard() // Continue on the card between tries and days
@@ -181,7 +192,7 @@ export default function Game() {
       }
     }
 
-    startGame(canvasRef.current, { onPlace: setPlace, onWalk: () => setWalked(true), onKnown: setKnown, onNeeds: setNeeds, onReady: setReady, onNear: setNear, onBubbles, onButton, onClock: setClock, onEvent: note, onCalm: () => setCalm((n) => n + 1), onCounted: () => setCounted((n) => n + 1), onMarket: setMarket, onItem: (e) => { sayId.current += 1; setItemSay({ ...e, n: sayId.current }) } })
+    startGame(canvasRef.current, { onPlace: setPlace, onWalk: () => setWalked(true), onNeeds: setNeeds, onReady: setReady, onNear: setNear, onBubbles, onButton, onClock: setClock, onIntro: setIntro, onEvent: note, onCalm: () => setCalm((n) => n + 1), onCounted: () => setCounted((n) => n + 1), onMarket: setMarket, onItem: (e) => { sayId.current += 1; setItemSay({ ...e, n: sayId.current }) } })
       .then((g) => {
         if (cancelled) return g.stop()
         game = g
@@ -334,11 +345,12 @@ export default function Game() {
   // the need list is open, like the clock), the bus-left music while that card is up, and the win music on
   // the win. The menu music fades out under those two, as Carl asked on Nov 21, and comes back after.
   const hurry = clock.phase === 'run' && clock.left <= CLOCK.hurry && !listOpen && !paused
+  const counting = intro?.step === 'count'
   const hurryWas = useRef(false)
   useEffect(() => {
     const sound = soundRef.current
     if (!sound) return
-    if (hurry) sound.play('tick', { loop: true })
+    if (hurry || counting) sound.play('tick', { loop: true }) // the tick-tock also counts the morning in after the opening scene
     else sound.stop('tick')
     if (hurry && !hurryWas.current) note(`Last ${CLOCK.hurry} seconds: the clock turns red and the tick-tock starts.`)
     hurryWas.current = hurry
@@ -349,7 +361,7 @@ export default function Game() {
     if (won) sound.play('win')
     else sound.stop('win', 900)
     sound.turn('music', lost || won ? 0 : 1, lost || won ? 500 : 1200)
-  }, [hurry, clock.phase])
+  }, [hurry, counting, clock.phase])
 
   // Dreko stands still while he helps a kid. The clock keeps running.
   useEffect(() => {
@@ -374,8 +386,14 @@ export default function Game() {
         } else if (key === 'y') startTutorial()
         else if ((key === 'e' || ((key === ' ' || key === 'enter') && !onButtonNow)) && !e.repeat) {
           e.preventDefault()
-          setTitle(null)
+          startFromTitle()
         }
+        return
+      }
+      if (now.current.intro) {
+        // the opening scene: Enter, Space, E or Escape skips it (its Skip button takes Enter and Space itself)
+        const onSkip = document.activeElement?.tagName === 'BUTTON'
+        if ((key === 'e' || key === 'escape' || ((key === ' ' || key === 'enter') && !onSkip)) && !e.repeat) gameRef.current?.skipIntro()
         return
       }
       if (now.current.paused) {
@@ -451,15 +469,14 @@ export default function Game() {
   const prefs = { sound: groups, onSound: flipSound, volume, onVolume: stepVolume, canFull, full, onFull: flipFull, tools, onTools: flipTools }
 
   // How to play: what the coach says right now (null outside the practice morning, and once its last card is up)
-  const line = clock.tutorial && !title && status === 'ready' && !(clock.phase === 'dayWon' && !clock.scene) ? coach({ clock, near, known, needs, ready, listSeen }) : null
+  const line = clock.tutorial && !title && status === 'ready' && !(clock.phase === 'dayWon' && !clock.scene) ? coach({ clock, near, needs, ready, listSeen }) : null
 
   return (
-    <div ref={stageRef} className="stage">
+    <div ref={stageRef} className={`stage ${intro ? 'stage-intro' : ''}`}>
       <canvas ref={canvasRef} className="world" />
-      {/* Anxiety comes from the game (world.js): up with the clock and with misses, down with what Dreko learns */}
+      {/* Anxiety comes from the game (world.js): up with the clock and with misses, down with every need done */}
       <Overlay
         place={place}
-        known={known}
         needs={needs}
         ready={ready}
         helping={!task && !listOpen && (clock.phase === 'run' || clock.phase === 'ready') ? KIDS.find((k) => k.name === near) : null}
@@ -543,16 +560,24 @@ export default function Game() {
           </ol>
         </section>
       )}
-      <canvas ref={mapRef} className="minimap" hidden={!showMap || !!title || listOpen || !!task || paused || now.current.card} aria-label="Tile map of the house" />
+      <canvas ref={mapRef} className="minimap" hidden={!showMap || !!title || !!intro || listOpen || !!task || paused || now.current.card} aria-label="Tile map of the house" />
       {status === 'loading' && <p className="note">Waking the house up</p>}
       {status === 'error' && <p className="note">The house did not load. Reload the page to try again.</p>}
       {line && !task && !listOpen && !paused && <div className={overlayClass}><Coach line={line} onLeave={toTitle} /></div>}
+      {/* the opening scene: Mom's line, then 3, 2, 1. The game's own buttons and bars are hidden while it plays. */}
+      {intro && !title && (
+        <div className={`${overlayClass} intro-layer`}>
+          {intro.line && <p className="intro-line" role="status"><b>Mom</b>{intro.line}</p>}
+          {intro.step === 'count' && <p key={intro.n} className="intro-count" aria-live="assertive">{intro.n}</p>}
+          <button type="button" className="hint hint-button intro-skip" onClick={() => gameRef.current?.skipIntro()}><span className="key key-a">A</span>Skip</button>
+        </div>
+      )}
       {status === 'ready' && title && (
         <Title
           view={title}
           onView={setTitle}
           best={best}
-          onStart={() => setTitle(null)}
+          onStart={startFromTitle}
           onHow={startTutorial}
           prefs={prefs}
           onClearBest={() => {
@@ -562,7 +587,7 @@ export default function Game() {
           }}
         />
       )}
-      {status === 'ready' && !title && !clock.tutorial && !walked && !task && <p className="note">Tap the floor, or use the stick or arrow keys, to walk Dreko</p>}
+      {status === 'ready' && !title && !intro && !clock.tutorial && !walked && !task && <p className="note">Tap the floor, or use the stick or arrow keys, to walk Dreko</p>}
     </div>
   )
 }

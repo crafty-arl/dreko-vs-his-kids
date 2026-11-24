@@ -1187,3 +1187,46 @@ body,
   .pause-cols { margin-top: 8px; }
   .pause-facts { font-size: 13px; }
 }
+
+/* ---------- the opening scene (Carl, Nov 23): Mom's line, then 3, 2, 1 ---------- */
+.stage-intro > .overlay:not(.intro-layer) { visibility: hidden; }
+.stage-intro > .overlay:not(.intro-layer) .bubble { visibility: hidden !important; }
+.intro-line {
+  position: fixed;
+  left: 50%;
+  bottom: calc(max(14px, env(safe-area-inset-bottom)) + 8px);
+  transform: translateX(-50%);
+  width: min(calc(100vw - 24px), 460px);
+  box-sizing: border-box;
+  margin: 0;
+  padding: 12px 14px 14px;
+  border: 2px solid var(--ink);
+  border-radius: 14px;
+  background: var(--ui-bg);
+  color: var(--ink);
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 1.25;
+  box-shadow: 0 4px 0 var(--ink);
+  animation: intro-in 0.25s ease-out;
+}
+.intro-line b { display: block; margin-bottom: 3px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.7; }
+@keyframes intro-in { from { opacity: 0; transform: translate(-50%, 8px); } }
+.intro-count {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  font-family: Anton, Impact, 'Arial Narrow', sans-serif;
+  font-size: min(46vw, 46vh);
+  line-height: 1;
+  color: var(--paper, #f1eee7);
+  -webkit-text-stroke: 6px var(--ink);
+  paint-order: stroke fill;
+  text-shadow: 0 8px 0 var(--ink);
+  animation: intro-count 0.75s ease-out both;
+}
+@keyframes intro-count { from { transform: scale(1.5); opacity: 0; } 25% { transform: scale(1); opacity: 1; } to { transform: scale(0.92); opacity: 0.85; } }
+.intro-skip { position: fixed; top: max(10px, env(safe-area-inset-top)); right: max(10px, env(safe-area-inset-right)); background: var(--ui-bg); }
+@media (prefers-reduced-motion: reduce) { .intro-line, .intro-count { animation: none; } }

@@ -13,7 +13,7 @@ export const STEPS = TASKS + 2 // walk, each need, and the need list
 const room = (id) => PLACES[ROOM_OF[id]].name
 
 // What to say right now: { step, say, more, point }. `point` is the kid whose bubble is lit up.
-export function coach({ clock, near, known, needs, ready, listSeen }) {
+export function coach({ clock, near, needs, ready, listSeen }) {
   const open = ORDER.filter((name) => needs[name]?.length)
   const done = TASKS - ORDER.reduce((n, name) => n + (needs[name]?.length ?? 0), 0)
   const step = Math.min(STEPS, 1 + (clock.phase === 'ready' ? 0 : 1) + done + (listSeen && clock.phase !== 'ready' ? 1 : 0))
@@ -31,15 +31,7 @@ export function coach({ clock, near, known, needs, ready, listSeen }) {
   const at = ready[who]
   if (at === 'walking') return { step, say: `${who} is walking to the bus stop. Watch what happens there.`, more: 'Some kids need two things.' }
   if (at === 'forgot') return { step, point: who, say: `"Oh wait, I forgot something!" ${who} needs one more thing.`, more: `${who} is going back inside for it.` }
-  if (!(known[who] > 0)) {
-    return {
-      step,
-      point: who,
-      say: second ? `${who} went back to the ${room(need)}. Walk up to ${who} to find out what else is needed.` : `Walk up to ${who} in the ${room(need)} to find out what ${who} needs.`,
-      more: 'A question mark means Dreko does not know yet. He only has to get close.',
-    }
-  }
-  if (near !== who) return { step, point: who, say: `${who} needs: ${NEEDS[need]}. Walk right up to ${who}.`, more: `${who} is in the ${room(need)}.` }
+  if (near !== who) return { step, point: who, say: second ? `${who} went back in for: ${NEEDS[need]}. Walk right up to ${who}.` : `${who} needs: ${NEEDS[need]}. Walk right up to ${who}.`, more: `${who} is in the ${room(need)}. The bubble over a kid shows what they need.` }
   return { step, point: who, say: `Press A, or tap Help ${who}.`, more: 'A small task opens. The words on it say what to do.' }
 }
 
@@ -67,7 +59,7 @@ export function TutorialDone({ onStart, onTitle }) {
         <ul>
           <li>The bus clock starts when Dreko first moves. You get {CLOCK.firstLoop} seconds.</li>
           <li>If the bus leaves without all {KIDS.length} kids, the same morning starts over. You get {WEEK.tries} tries.</li>
-          <li>Dreko remembers what each kid needs. Every kid he got ready adds {CLOCK.perKid} seconds to the next try.</li>
+          <li>Every kid he got ready adds {CLOCK.perKid} seconds to the next try.</li>
           <li>Every morning has more needs, and later the kids walk around.</li>
           <li>The red bar is his anxiety. When it is high, his hands shake in the tasks.</li>
           <li>A morning you win pays points. Spend them at the market on things for Dreko's pockets, and use each one once.</li>

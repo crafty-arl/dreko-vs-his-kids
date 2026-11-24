@@ -18,6 +18,18 @@ export const ROOM_VIEW = { on: true, wide: 8.7, tall: 10.4, per: 0.715, shift: [
 export const WALL = { tall: 2, half: 0.85, cut: 0.3 }
 
 export const DREKO = { height: 1.85, speed: 3.1, radius: 0.24, start: [5.5, 2.6] }
+// The opening scene (Carl, Nov 23: "we need a small cutscene in the beginning"): Mom walks up on her side of the
+// street and says her line, Dreko stands across the street looking at her, "all sad looking", then he goes into
+// the house, and a 3, 2, 1 counts the morning in. It plays when Start is pressed on the title screen, and a tap,
+// A or Enter skips it. `line` is Carl's own rough wording ("Don't forget it's your week. Don't be late or
+// something like that"): the final words are his. `dreko` is where he stands, `mom` where she walks from and to
+// along her pavement, `cam` where the camera looks, `door` the spot inside the front door he walks to,
+// `lineMs` how long the line stays up, `countMs` how long each number shows.
+export const INTRO = { line: "Don't forget, it's your week. Don't be late.", dreko: [10.5, 13.7], mom: [14.8, 11.2], cam: [10.4, 15.4], door: [10.5, 11.4], lineMs: 3800, countMs: 750, slump: 0.95 }
+
+// Help at doors and corners when the player steers with a stick or the keys: when the way Dreko is pushed is
+// blocked, but it is open within `reach` tiles to one side, he slips over to it, at most `step` tiles a frame.
+export const DOOR_HELP = { reach: 0.45, step: 0.05 }
 
 // The one walk everyone shares (src/game/walk.js). Feel: "busy dad in a hurry", quick and bouncy.
 // stride: tiles per step for each tile of height. bounce: lift per tile of height. rock and lean: radians.
@@ -72,14 +84,14 @@ export const WORLD = { margin: 12, ground: ['#bcb8ad', '#b6b2a7', '#b0aca1'], gr
 export const BUS = { at: [6.5, 15.9], from: -7, to: 24, speed: 9, size: 2.7, comeAt: 10, boardMs: 170, nodMs: 1100, hop: 0.38, hopMs: 420, driver: [0.65, 1.52], driverSize: 0.55, mom: [9.6, 17.7], momSize: 1.9, pace: { from: 2.5, to: 12.5, speed: 1.3, restMs: [900, 1900] }, cam: [6.9, 15.5] }
 
 // Dreko's anxiety, from 0 (calm) to 1. It climbs with the clock: the part of the try that is gone. Every need
-// he has learned today takes `perLearned` off and every kid counted takes `perCounted` off, so a later try,
-// where he remembers more, is calmer (the game map: "His anxiety eases as he learns each kid"). A miss in a
+// he gets done takes `perDone` off and every kid counted takes `perCounted` off (the game map: "His anxiety
+// eases as he learns each kid"; since Nov 23 there is no learning, so a need done is what eases it). A miss in a
 // mini task adds `perMiss`, which wears off by `settle` a second.
 // What it does (Carl's pick, Nov 21): above `shakyFrom` his hands shake in the mini tasks, more the higher it
 // is: the gold zone of a hold shrinks by up to `shrink` of its width and the pen of a trace wobbles by up to
 // `wobble` card units. Above `sweatFrom` sweat drops fly off him. `breathMs` is the deep breath he takes when
 // it drops. Every number is a draft to tune by playing.
-export const ANXIETY = { perLearned: 0.03, perCounted: 0.03, perMiss: 0.08, settle: 0.012, shakyFrom: 0.45, shrink: 0.45, wobble: 9, sweatFrom: 0.55, breathMs: 900 }
+export const ANXIETY = { perDone: 0.03, perCounted: 0.03, perMiss: 0.08, settle: 0.012, shakyFrom: 0.45, shrink: 0.45, wobble: 9, sweatFrom: 0.55, breathMs: 900 }
 
 // Every mini task: `doneMs` is how long the tick shows before the kid walks off. Each need's own task
 // settings are in src/game/needs.js (MOVES).
@@ -97,18 +109,21 @@ export const TUTOR = { needs: { Tix: ['breakfast'], Zhar: ['lunch'], Pobo: ['bac
 // Points and what is in Dreko's pockets carry over from morning to morning and are gone at game over.
 // `pockets` is how many things he can carry. Each thing is used once, when the player picks the moment.
 // The five things are the ones Carl picked on Nov 23. Every number and every word here is a draft to tune.
+// Nov 23 night, Carl: "The first time I went into the store, I was able to buy 2 perks when I should be able to
+// buy 1. So I think our prices are too cheap." So a won morning now pays 5 to 9 and the things cost 5 to 8: one
+// win always buys one thing and never two; a second thing takes points saved from another morning.
 // skates: Dreko walks `faster` times as fast until that day is done. watch: the bus clock stops for `seconds`.
 // whistle: every kid walking around stands still for `seconds`. coin: once the bus is at the stop, it waits
 // `seconds` more. candy: the kid Dreko is standing next to does their own need.
 export const MARKET = {
-  points: { won: 4, perTryLeft: 3, perSecond: 1, mostSeconds: 6 },
+  points: { won: 5, perTryLeft: 1, perSecond: 1, mostSeconds: 2 },
   pockets: 3,
   items: {
-    skates: { name: 'Roller skates', does: 'Dreko is faster until the day is done', price: 6, faster: 1.35 },
-    watch: { name: 'Pocket watch', does: 'The clock stops for 5 seconds', price: 5, seconds: 5 },
-    whistle: { name: 'Whistle', does: 'Kids on the move stand still for 5 seconds', price: 4, seconds: 5 },
-    coin: { name: 'Coin for the driver', does: 'The bus waits 5 more seconds', price: 5, seconds: 5 },
-    candy: { name: 'Piece of candy', does: 'One kid does their own need', price: 7 },
+    skates: { name: 'Roller skates', does: 'Dreko is faster until the day is done', price: 7, faster: 1.35 },
+    watch: { name: 'Pocket watch', does: 'The clock stops for 5 seconds', price: 6, seconds: 5 },
+    whistle: { name: 'Whistle', does: 'Kids on the move stand still for 5 seconds', price: 5, seconds: 5 },
+    coin: { name: 'Coin for the driver', does: 'The bus waits 5 more seconds', price: 6, seconds: 5 },
+    candy: { name: 'Piece of candy', does: 'One kid does their own need', price: 8 },
   },
 }
 
