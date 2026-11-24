@@ -1152,3 +1152,38 @@ body,
 .pause-bars { width: 16px; height: 18px; border-left: 6px solid var(--ink); border-right: 6px solid var(--ink); box-sizing: border-box; }
 .pause .task-close { display: block; margin: 8px auto 0; }
 .panel-bus p.pause-tip { margin-top: 10px; font-size: 12px; opacity: 0.75; }
+
+/* More on the pause card (Carl, Nov 23): the game's name, where the morning stands, settings, controls */
+.panel-pause { width: min(100%, 400px); }
+.panel-bus p.pause-tag { display: inline-block; margin: 0 0 6px; padding: 3px 12px; border: 2px solid var(--ink); border-radius: 999px; background: var(--gold); font-size: 13px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; }
+.panel-bus h2.pause-title { margin: 0; font-size: 34px; line-height: 0.95; }
+.pause-title b { font-weight: 400; white-space: nowrap; }
+.pause-title span { color: var(--gold); }
+.pause-acts { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; margin-top: 12px; }
+.pause-acts .close.again, .pause .pause-acts .task-close { margin: 0; }
+.pause-cols { display: grid; gap: 8px; margin-top: 12px; text-align: left; }
+.pause-cols .set-box { margin: 0; }
+.pause-cols .set-box h3 { margin-bottom: 6px; }
+.pause-facts { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 0; font-size: 14px; }
+.pause-facts dt { font-weight: 800; }
+.pause-facts dd { margin: 0; font-weight: 600; text-align: right; }
+.pause-pockets { display: flex; align-items: center; justify-content: flex-end; gap: 4px; flex-wrap: wrap; }
+.pause-pockets .icon { width: 26px; height: 26px; display: block; }
+.pause-pockets em { font-style: normal; font-size: 12px; font-weight: 800; padding: 2px 8px; border: 2px solid var(--ink); border-radius: 999px; background: var(--gold); }
+.pause-cols .set-row { font-size: 14px; }
+.pause-cols .set-row .tool { min-width: 58px; min-height: 36px; background: var(--paper); font-size: 14px; }
+.pause-cols .set-row .tool[aria-pressed='true'] { background: var(--gold); }
+/* a setting with two buttons: on or off, and how loud */
+.set-pair { display: flex; gap: 6px; }
+.set-row em { display: block; font-style: normal; font-size: 12px; font-weight: 600; opacity: 0.7; }
+.set-row .tool.tool-plain { min-width: 58px; }
+@media (min-width: 700px) {
+  .panel-pause { width: min(100%, 810px); padding: 10px 14px; }
+  .pause-cols { grid-template-columns: 1fr 1fr 1fr; }
+  .panel-bus h2.pause-title { font-size: 30px; }
+  .pause-title b { display: inline; }
+  .pause-acts { margin-top: 8px; }
+  .panel-bus p.pause-tip { margin-top: 6px; }
+  .pause-cols { margin-top: 8px; }
+  .pause-facts { font-size: 13px; }
+}

@@ -1,12 +1,13 @@
 // The screen overlay: bus clock, kids on the bus, Dreko's anxiety, a bubble over each kid, the button hints
 // and the need list. It only shows what the game tells it; it holds no game rules of its own.
-import { CLOCK, UI, WEEK } from './config.js'
+import { CLOCK, MARKET, UI, WEEK } from './config.js'
 import { dayAfter, levelOf } from './level.js'
 import { KIDS } from './family.js'
 import { Icon, InkFilter } from './Icon.jsx'
 import { PLACES } from './house.js'
 import Market, { Pockets } from './Market.jsx'
 import { NEEDS, ROOM_OF } from './needs.js'
+import { SettingRows } from './Settings.jsx'
 import { BestTries } from './Title.jsx'
 import { TutorialDone } from './Tutorial.jsx'
 
@@ -21,7 +22,7 @@ const clockText = (seconds) => `${Math.floor(seconds / 60)}:${String(Math.ceil(s
 // bus, at the stop remembering one more need, on the way back in, or waiting for the bus.
 // helping: the kid Dreko can help right now, if any.
 // bubbleRefs: one ref per kid, in KIDS order; the game moves them every frame.
-export default function Overlay({ place, known, needs, ready, helping, clock, worry, calm, listOpen, onToggleList, onHelp, onPlayAgain, onContinue, best = [], bestAt = -1, pointAt, onTitle, counted = 0, onPick, market, shop, lit = 0, itemSay, onUse, onBuy, onPutBack, paused, onPause, onResume, bubbleRefs, settings, children }) {
+export default function Overlay({ place, known, needs, ready, helping, clock, worry, calm, listOpen, onToggleList, onHelp, onPlayAgain, onContinue, best = [], bestAt = -1, pointAt, onTitle, counted = 0, onPick, market, shop, lit = 0, itemSay, onUse, onBuy, onPutBack, paused, onPause, onResume, prefs, bubbleRefs, settings, children }) {
   const over = clock.phase === 'left' || clock.phase === 'over' || clock.phase === 'dayWon'
   const left = (kid) => needs[kid.name] ?? []
   const needOf = (kid) => left(kid)[0]
@@ -125,16 +126,55 @@ export default function Overlay({ place, known, needs, ready, helping, clock, wo
         </span>
       </footer>
 
-      {/* paused (Carl's card, Nov 23): go on with the game, or back to the title screen. The words are a stand-in. */}
+      {/* paused (Carl's card, Nov 23; then "Add title. Add more settings. Add more pause screen like information"):
+          the game's name, Continue or Back to the title, where the morning stands, the settings and the controls.
+          The words are a stand-in. */}
       {paused && !over && (
         <div className="list pause" role="dialog" aria-label="Paused">
-          <div className="panel panel-bus">
-            <h2>Paused</h2>
-            <p>{clock.tutorial ? 'How to play · practice' : <>{week > 0 ? `Week ${week + 1} · ` : ''}{day} · try {clock.loop} of {WEEK.tries} · {onBus} of {KIDS.length} ready</>}</p>
-            <p>The clock waits and nobody moves.</p>
-            <button type="button" className="close again" onClick={onResume} autoFocus><span className="key key-a">A</span>Continue</button>
-            <button type="button" className="close task-close" onClick={onTitle}>Back to the title</button>
+          <div className="panel panel-bus panel-pause">
+            <p className="pause-tag">Paused</p>
+            <h2 className="pause-title">Dreko <b><span>vs</span> His Kids</b></h2>
+            <div className="pause-acts">
+              <button type="button" className="close again" onClick={onResume} autoFocus><span className="key key-a">A</span>Continue</button>
+              <button type="button" className="close task-close" onClick={onTitle}>Back to the title</button>
+            </div>
             <p className="pause-tip">{clock.tutorial ? 'Back to the title leaves the practice morning.' : 'Back to the title ends this game. It starts again on the first Monday.'}</p>
+            <div className="pause-cols">
+              <section className="set-box">
+                <h3>Right now</h3>
+                <dl className="pause-facts">
+                  <dt>Morning</dt><dd>{clock.tutorial ? 'How to play, practice' : <>{week > 0 ? `Week ${week + 1}, ` : ''}{day}</>}</dd>
+                  {!clock.tutorial && <><dt>Try</dt><dd>{clock.loop} of {WEEK.tries}</dd></>}
+                  {!clock.tutorial && <><dt>Bus clock</dt><dd>{clock.phase === 'ready' ? `${clockText(timeLeft)}, starts when Dreko moves` : clockText(timeLeft)}</dd></>}
+                  <dt>Ready for the bus</dt><dd>{onBus} of {KIDS.length}</dd>
+                  <dt>Anxiety</dt><dd>{Math.round(worry * 100)}%</dd>
+                  {!clock.tutorial && market && <><dt>Points</dt><dd>{market.points}</dd></>}
+                  {!clock.tutorial && market && (
+                    <>
+                      <dt>Pockets</dt>
+                      <dd className="pause-pockets">
+                        {market.pockets.length ? market.pockets.map((id, i) => <span key={i} title={MARKET.items[id].name}><Icon name={id} wash="gold" /></span>) : 'Empty'}
+                        {market.skates && <em>Skates on</em>}
+                      </dd>
+                    </>
+                  )}
+                </dl>
+              </section>
+              <section className="set-box">
+                <h3>Settings</h3>
+                <SettingRows prefs={prefs} />
+              </section>
+              <section className="set-box">
+                <h3>Controls</h3>
+                <dl className="pause-facts">
+                  <dt>Walk</dt><dd>Stick, arrow keys, or tap the floor</dd>
+                  <dt>Help a kid</dt><dd>A, the E key, or tap Help</dd>
+                  <dt>Need list</dt><dd>Y</dd>
+                  <dt>Use a pocket</dt><dd>Tap it, keys 1 2 3, or LB then RB</dd>
+                  <dt>Pause</dt><dd>Start, or the P key</dd>
+                </dl>
+              </section>
+            </div>
           </div>
         </div>
       )}

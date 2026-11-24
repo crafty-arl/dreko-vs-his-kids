@@ -13,6 +13,8 @@ const VOLUME = { music: 0.5, tick: 0.85, lose: 0.9, win: 0.9 }
 const KEY = 'dreko-sound'
 // Settings: the music (the tune that loops) and the sounds (tick-tock, bus left, all aboard) each have a switch
 const GROUP = { music: 'music', tick: 'sounds', lose: 'sounds', win: 'sounds' }
+// Settings: how loud the music and the sounds are, each in three steps (Carl, Nov 23: "Add more settings")
+export const VOLUME_STEPS = [{ v: 0.4, name: 'Low' }, { v: 0.7, name: 'Mid' }, { v: 1, name: 'High' }]
 const WAKE = ['pointerdown', 'pointerup', 'touchend', 'click', 'keydown']
 
 export function createSound() {
@@ -26,12 +28,26 @@ export function createSound() {
   const level = {} // how far a track is turned down, 0 to 1 (1 when not set)
   let muted = false
   const on = { music: true, sounds: true }
+  const vol = { music: 1, sounds: 1 }
   try {
     muted = localStorage.getItem(KEY) === 'off'
     for (const g in on) on[g] = localStorage.getItem(`${KEY}-${g}`) !== 'off'
+    for (const g in vol) {
+      const saved = Number(localStorage.getItem(`${KEY}-volume-${g}`))
+      if (VOLUME_STEPS.some((s) => s.v === saved)) vol[g] = saved
+    }
   } catch { /* private mode: sound stays on */ }
 
-  const loud = (name) => (on[GROUP[name]] ? VOLUME[name] * (level[name] ?? 1) : 0)
+  const loud = (name) => (on[GROUP[name]] ? VOLUME[name] * (level[name] ?? 1) * vol[GROUP[name]] : 0)
+  // set every track of a group that is sounding right now to how loud it should be
+  const retune = (group) => {
+    for (const name in playing) {
+      if (GROUP[name] !== group) continue
+      const g = playing[name].gain.gain
+      g.cancelScheduledValues(ctx.currentTime)
+      g.setValueAtTime(loud(name), ctx.currentTime)
+    }
+  }
 
   function start(name) {
     if (!ctx || !buffers[name] || playing[name] || !want[name]) return
@@ -122,12 +138,15 @@ export function createSound() {
   function setOn(group, yes) {
     on[group] = !!yes
     try { localStorage.setItem(`${KEY}-${group}`, yes ? 'on' : 'off') } catch { /* nothing to save to */ }
-    for (const name in playing) {
-      if (GROUP[name] !== group) continue
-      const g = playing[name].gain.gain
-      g.cancelScheduledValues(ctx.currentTime)
-      g.setValueAtTime(loud(name), ctx.currentTime)
-    }
+    retune(group)
+  }
+
+  // Settings: how loud the music or the sounds are, one of VOLUME_STEPS. It is remembered on this device.
+  function setVolume(group, v) {
+    if (!(group in vol) || !VOLUME_STEPS.some((s) => s.v === v)) return
+    vol[group] = v
+    try { localStorage.setItem(`${KEY}-volume-${group}`, String(v)) } catch { /* nothing to save to */ }
+    retune(group)
   }
 
   return {
@@ -136,6 +155,8 @@ export function createSound() {
     turn,
     setMuted,
     setOn,
+    setVolume,
+    get volume() { return { ...vol } },
     get muted() { return muted },
     get on() { return { ...on } },
     // for tests: which tracks are sounding right now, and how loud each is set
@@ -143,6 +164,7 @@ export function createSound() {
       engine: ctx ? ctx.state : 'asleep',
       muted,
       groups: { ...on },
+      volume: { ...vol },
       on: Object.fromEntries(Object.keys(FILES).map((n) => [n, !!playing[n]])),
       loud: Object.fromEntries(Object.keys(playing).map((n) => [n, +playing[n].gain.gain.value.toFixed(2)])),
     }),

@@ -3,7 +3,7 @@ import { CLOCK, WEEK } from './config.js'
 import { KIDS } from './family.js'
 import Overlay, { overlayClass } from './Overlay.jsx'
 import { addRun, clearBest, readBest } from './scores.js'
-import { createSound } from './sound.js'
+import { VOLUME_STEPS, createSound } from './sound.js'
 import { MOVES, MOVE_NAMES, NEEDS } from './needs.js'
 import Task from './Task.jsx'
 import Title from './Title.jsx'
@@ -20,6 +20,12 @@ export default function Game() {
   const soundRef = useRef(null)
   const [soundOn, setSoundOn] = useState(true)
   const [groups, setGroups] = useState({ music: true, sounds: true }) // Settings: the music and the sounds, each on or off
+  // More settings (Carl, Nov 23): how loud each is, full screen, and whether the Log and Walk test buttons show
+  const [volume, setVolume] = useState({ music: 1, sounds: 1 })
+  const [full, setFull] = useState(false)
+  const [tools, setTools] = useState(() => {
+    try { return localStorage.getItem('dreko-test-buttons') !== 'off' } catch { return true }
+  })
   // The rules log: a line for every rule that fires, newest first. Open the page with ?log to start with it showing.
   const [log, setLog] = useState([])
   const [showLog, setShowLog] = useState(() => new URLSearchParams(window.location.search).has('log'))
@@ -257,6 +263,18 @@ export default function Game() {
     return () => document.removeEventListener('visibilitychange', hidden)
   }, [pause])
 
+  useEffect(() => {
+    const onFull = () => setFull(!!document.fullscreenElement)
+    document.addEventListener('fullscreenchange', onFull)
+    return () => document.removeEventListener('fullscreenchange', onFull)
+  }, [])
+  // with the test buttons off, the log and the walk test go away with them
+  useEffect(() => {
+    if (tools) return
+    setShowLog(false)
+    setWalkTest(false)
+  }, [tools])
+
   // the clock waits while the need list is open
   const listWas = useRef(false)
   useEffect(() => {
@@ -304,6 +322,7 @@ export default function Game() {
     window.__drekoSound = sound // for tests
     setSoundOn(!sound.muted)
     setGroups({ music: !sound.muted && sound.on.music, sounds: !sound.muted && sound.on.sounds })
+    setVolume(sound.volume)
     sound.play('music', { loop: true }) // the menu music runs through the whole game, as Carl asked on Nov 21
     return () => {
       sound.end()
@@ -409,6 +428,28 @@ export default function Game() {
     syncSound()
   }
 
+  // Volume: each press goes one step on, Low, Mid, High and round again
+  const stepVolume = (group) => {
+    const sound = soundRef.current
+    if (!sound) return
+    const at = VOLUME_STEPS.findIndex((s) => s.v === sound.volume[group])
+    sound.setVolume(group, VOLUME_STEPS[(at + 1) % VOLUME_STEPS.length].v)
+    setVolume(sound.volume)
+  }
+  // Full screen, where the browser has it (an iPhone does not)
+  const canFull = typeof document !== 'undefined' && !!document.fullscreenEnabled
+  const flipFull = () => {
+    if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {})
+    else document.documentElement.requestFullscreen?.().catch(() => {})
+  }
+  const flipTools = () => {
+    setTools((v) => {
+      try { localStorage.setItem('dreko-test-buttons', v ? 'off' : 'on') } catch { /* nothing to save to */ }
+      return !v
+    })
+  }
+  const prefs = { sound: groups, onSound: flipSound, volume, onVolume: stepVolume, canFull, full, onFull: flipFull, tools, onTools: flipTools }
+
   // How to play: what the coach says right now (null outside the practice morning, and once its last card is up)
   const line = clock.tutorial && !title && status === 'ready' && !(clock.phase === 'dayWon' && !clock.scene) ? coach({ clock, near, known, needs, ready, listSeen }) : null
 
@@ -426,6 +467,7 @@ export default function Game() {
         onPlayAgain={() => gameRef.current?.playAgain()}
         onContinue={continueCard}
         paused={paused}
+        prefs={prefs}
         onPause={pause}
         onResume={resume}
         market={market}
@@ -467,9 +509,11 @@ export default function Game() {
             >
               Sound {soundOn ? 'on' : 'off'}
             </button>
-            <button type="button" className="tool" aria-pressed={showLog} onClick={() => setShowLog((v) => !v)}>
-              Log
-            </button>
+            {tools && (
+              <button type="button" className="tool" aria-pressed={showLog} onClick={() => setShowLog((v) => !v)}>
+                Log
+              </button>
+            )}
           </div>
         }
       >
@@ -477,9 +521,11 @@ export default function Game() {
           <button type="button" className="tool" aria-pressed={showMap} onClick={() => setShowMap((v) => !v)}>
             Map
           </button>
-          <button type="button" className="tool" aria-pressed={walkTest} onClick={() => setWalkTest((v) => !v)}>
-            Walk test
-          </button>
+          {tools && (
+            <button type="button" className="tool" aria-pressed={walkTest} onClick={() => setWalkTest((v) => !v)}>
+              Walk test
+            </button>
+          )}
         </div>
       </Overlay>
       {task && (
@@ -508,8 +554,7 @@ export default function Game() {
           best={best}
           onStart={() => setTitle(null)}
           onHow={startTutorial}
-          sound={groups}
-          onSound={flipSound}
+          prefs={prefs}
           onClearBest={() => {
             clearBest()
             setBest([])

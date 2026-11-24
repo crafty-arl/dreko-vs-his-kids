@@ -54,7 +54,8 @@ An entry for **Tiny Loop Jam 2026**. The jam window runs from Nov 20, 18:00 UTC 
   - Coin for the driver: once the bus is at the stop, it waits 5 more seconds.
   - Piece of candy: the kid Dreko is standing next to does their own need.
   - The five things are Carl's pick (Nov 23). Their prices, numbers and words are drafts, their icons are painted in the same pen and watercolour look as the need icons (`public/art/icons/`), and the spot for the character who runs the market is empty until Carl makes that character.
-- Pause (Carl's card, Nov 23): the button beside Needs, P or Escape on a keyboard, Start on a controller. The whole morning stands still: the clock, Dreko and the kids. The card has Continue, and Back to the title, which ends the game in play. It also pauses by itself when the page is hidden (a phone that locks, another tab). There is no pause inside a mini task or on a card.
+- Pause (Carl's card, Nov 23): the button beside Needs, P or Escape on a keyboard, Start on a controller. The whole morning stands still: the clock, Dreko and the kids. The card has Continue, and Back to the title, which ends the game in play. It also pauses by itself when the page is hidden (a phone that locks, another tab). There is no pause inside a mini task or on a card. The pause card shows the game's name, where the morning stands (day, try, bus clock, kids ready, anxiety, points, pockets), the settings and the controls.
+- More settings (`src/game/Settings.jsx`, on the title's Settings page and on the pause card): music and sounds each on or off and Low, Mid or High; full screen where the browser has it; and a switch that hides the Log and Walk test buttons. All but full screen are remembered on the device.
 
 Not in yet: each need's own task pictures, the ending screen, drawn walking frames, and sound effects (steps, task done, kid boards).
 

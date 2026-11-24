@@ -5,6 +5,7 @@ import { WEEK } from './config.js'
 import { KIDS } from './family.js'
 import { overlayClass } from './Overlay.jsx'
 import { usePad } from './pad.js'
+import { SettingRows } from './Settings.jsx'
 
 const art = import.meta.env.BASE_URL + 'art/'
 const mornings = (n) => (n === 1 ? '1 morning' : `${n} mornings`)
@@ -46,20 +47,13 @@ function PadLine({ pad, short }) {
   )
 }
 
-function Settings({ sound, onSound, onClearBest, hasBest, onBack }) {
+function Settings({ prefs, onClearBest, hasBest, onBack }) {
   const pad = usePad(true)
   const [sure, setSure] = useState(false)
   return (
     <div className="panel panel-bus panel-title panel-menu">
       <h2>Settings</h2>
-      <div className="set-row">
-        <span>Music</span>
-        <button type="button" className="tool" aria-pressed={sound.music} onClick={() => onSound('music')}>{sound.music ? 'On' : 'Off'}</button>
-      </div>
-      <div className="set-row">
-        <span>Sounds</span>
-        <button type="button" className="tool" aria-pressed={sound.sounds} onClick={() => onSound('sounds')}>{sound.sounds ? 'On' : 'Off'}</button>
-      </div>
+      <SettingRows prefs={prefs} />
       <div className="set-box">
         <h3>Controller</h3>
         <PadLine pad={pad} />
@@ -131,12 +125,12 @@ function Credits({ onBack }) {
 
 // The words under the name are a stand-in: they only say the rules that are in the game.
 // view: 'home', 'settings' or 'credits'.
-export default function Title({ view, onView, best, onStart, onHow, sound, onSound, onClearBest }) {
+export default function Title({ view, onView, best, onStart, onHow, prefs, onClearBest }) {
   const pad = usePad(false)
   return (
     <div className={`${overlayClass} title`}>
       <div className="list">
-        {view === 'settings' && <Settings sound={sound} onSound={onSound} onClearBest={onClearBest} hasBest={best.length > 0} onBack={() => onView('home')} />}
+        {view === 'settings' && <Settings prefs={prefs} onClearBest={onClearBest} hasBest={best.length > 0} onBack={() => onView('home')} />}
         {view === 'credits' && <Credits onBack={() => onView('home')} />}
         {view === 'home' && (
           <div className="panel panel-bus panel-title">
